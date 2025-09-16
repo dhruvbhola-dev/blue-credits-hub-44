@@ -14,7 +14,198 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      carbon_credits: {
+        Row: {
+          credits_amount: number
+          id: string
+          issued_at: string | null
+          owner_id: string
+          price_per_credit: number | null
+          project_id: string
+          status: string | null
+        }
+        Insert: {
+          credits_amount: number
+          id?: string
+          issued_at?: string | null
+          owner_id: string
+          price_per_credit?: number | null
+          project_id: string
+          status?: string | null
+        }
+        Update: {
+          credits_amount?: number
+          id?: string
+          issued_at?: string | null
+          owner_id?: string
+          price_per_credit?: number | null
+          project_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carbon_credits_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carbon_credits_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_listings: {
+        Row: {
+          created_at: string | null
+          credit_id: string
+          credits_available: number
+          id: string
+          price_per_credit: number
+          seller_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credit_id: string
+          credits_available: number
+          id?: string
+          price_per_credit: number
+          seller_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credit_id?: string
+          credits_available?: number
+          id?: string
+          price_per_credit?: number
+          seller_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_listings_credit_id_fkey"
+            columns: ["credit_id"]
+            isOneToOne: false
+            referencedRelation: "carbon_credits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_listings_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          full_name: string
+          id: string
+          organization: string | null
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          full_name: string
+          id?: string
+          organization?: string | null
+          phone?: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          full_name?: string
+          id?: string
+          organization?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          area_hectares: number
+          description: string
+          documents: string[] | null
+          estimated_credits: number
+          id: string
+          images: string[] | null
+          location: string
+          status: string | null
+          submitted_at: string | null
+          submitter_id: string
+          title: string
+          verification_notes: string | null
+          verified_at: string | null
+          verifier_id: string | null
+        }
+        Insert: {
+          area_hectares: number
+          description: string
+          documents?: string[] | null
+          estimated_credits: number
+          id?: string
+          images?: string[] | null
+          location: string
+          status?: string | null
+          submitted_at?: string | null
+          submitter_id: string
+          title: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verifier_id?: string | null
+        }
+        Update: {
+          area_hectares?: number
+          description?: string
+          documents?: string[] | null
+          estimated_credits?: number
+          id?: string
+          images?: string[] | null
+          location?: string
+          status?: string | null
+          submitted_at?: string | null
+          submitter_id?: string
+          title?: string
+          verification_notes?: string | null
+          verified_at?: string | null
+          verifier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_submitter_id_fkey"
+            columns: ["submitter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_verifier_id_fkey"
+            columns: ["verifier_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +214,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      user_role: "admin" | "ngo" | "panchayat" | "verifier"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +341,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["admin", "ngo", "panchayat", "verifier"],
+    },
   },
 } as const
