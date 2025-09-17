@@ -1,0 +1,108 @@
+{
+  "common": {
+    "welcome": "स्वागत",
+    "signOut": "साइन आउट",
+    "login": "लॉगिन",
+    "signup": "साइन अप",
+    "submit": "जमा करें",
+    "cancel": "रद्द करें",
+    "save": "सेव करें",
+    "delete": "मिटाएं",
+    "edit": "संपादित करें",
+    "view": "देखें",
+    "loading": "लोड हो रहा है",
+    "error": "त्रुटि",
+    "success": "सफलता",
+    "confirm": "पुष्टि करें",
+    "yes": "हाँ",
+    "no": "नहीं",
+    "required": "आवश्यक"
+  },
+  "navigation": {
+    "dashboard": "डैशबोर्ड",
+    "reporting": "रिपोर्टिंग",
+    "carbonTracker": "कार्बन ट्रैकर",
+    "marketplace": "मार्केटप्लेस",
+    "verification": "सत्यापन",
+    "projectSubmission": "प्रोजेक्ट सबमिशन"
+  },
+  "auth": {
+    "signInTitle": "ब्लूकार्बन में साइन इन करें",
+    "signUpTitle": "खाता बनाएं",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "fullName": "पूरा नाम",
+    "role": "भूमिका",
+    "organization": "संगठन",
+    "emailPlaceholder": "अपना ईमेल दर्ज करें",
+    "passwordPlaceholder": "अपना पासवर्ड दर्ज करें",
+    "signInButton": "साइन इन करें",
+    "signUpButton": "खाता बनाएं",
+    "alreadyHaveAccount": "क्या आपके पास पहले से खाता है?",
+    "dontHaveAccount": "क्या आपके पास खाता नहीं है?",
+    "signInHere": "यहाँ साइन इन करें",
+    "signUpHere": "यहाँ साइन अप करें"
+  },
+  "roles": {
+    "ngo": "एनजीओ",
+    "localpeople": "स्थानीय लोग",
+    "verifier": "सत्यापनकर्ता",
+    "company": "कंपनी"
+  },
+  "dashboard": {
+    "welcomeBack": "वापसी पर स्वागत",
+    "totalProjects": "कुल प्रोजेक्ट्स",
+    "totalCredits": "कुल क्रेडिट्स",
+    "pendingVerification": "सत्यापन लंबित",
+    "recentActivity": "हाल की गतिविधि"
+  },
+  "reporting": {
+    "title": "प्रोजेक्ट रिपोर्टिंग",
+    "projectName": "प्रोजेक्ट का नाम",
+    "projectNamePlaceholder": "प्रोजेक्ट का नाम दर्ज करें",
+    "area": "क्षेत्रफल (हेक्टेयर)",
+    "areaPlaceholder": "हेक्टेयर में क्षेत्रफल दर्ज करें",
+    "description": "विवरण",
+    "descriptionPlaceholder": "अपने ब्लू कार्बन प्रोजेक्ट का वर्णन करें",
+    "location": "स्थान",
+    "locationPlaceholder": "स्थान चुनें या दर्ज करें",
+    "uploadPhotos": "फोटो अपलोड करें",
+    "photosHelper": "अपनी प्रोजेक्ट साइट की फोटो अपलोड करें",
+    "submitProject": "प्रोजेक्ट जमा करें",
+    "projectSubmitted": "सत्यापन के लिए प्रोजेक्ट सफलतापूर्वक जमा किया गया"
+  },
+  "verification": {
+    "title": "प्रोजेक्ट सत्यापन",
+    "pendingProjects": "लंबित प्रोजेक्ट्स",
+    "assignTokens": "टोकन असाइन करें",
+    "approve": "अनुमोदन करें",
+    "reject": "अस्वीकार करें",
+    "generateCertificate": "प्रमाणपत्र बनाएं",
+    "contractCode": "स्मार्ट कॉन्ट्रैक्ट कोड",
+    "projectDetails": "प्रोजेक्ट विवरण",
+    "verificationComplete": "सत्यापन पूर्ण"
+  },
+  "marketplace": {
+    "title": "कार्बन क्रेडिट मार्केटप्लेस",
+    "buyCredits": "क्रेडिट खरीदें",
+    "sellCredits": "क्रेडिट बेचें",
+    "creditsAvailable": "उपलब्ध क्रेडिट्स",
+    "pricePerCredit": "प्रति क्रेडिट कीमत",
+    "totalPrice": "कुल कीमत",
+    "purchaseComplete": "खरीदारी सफलतापूर्वक पूर्ण"
+  },
+  "carbonTracker": {
+    "title": "कार्बन ट्रैकर",
+    "mapTitle": "ब्लू कार्बन प्रोजेक्ट्स मैप",
+    "projectStats": "प्रोजेक्ट आंकड़े",
+    "viewDetails": "विवरण देखें"
+  },
+  "certificate": {
+    "title": "कार्बन क्रेडिट प्रमाणपत्र",
+    "download": "प्रमाणपत्र डाउनलोड करें",
+    "projectOwner": "प्रोजेक्ट स्वामी",
+    "verifiedBy": "द्वारा सत्यापित",
+    "certificateId": "प्रमाणपत्र आईडी",
+    "issueDate": "जारी करने की तारीख"
+  }
+}

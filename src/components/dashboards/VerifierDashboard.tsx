@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, XCircle, FileText, Award, Eye } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, Award, Eye, Code } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { contractCode } from '@/utils/dummyData';
 
 interface Project {
   id: string;
@@ -17,9 +19,9 @@ interface Project {
   description: string;
   status: string;
   estimated_credits: number;
-  submitted_at: string;
-  submitter_id: string;
-  profiles: {
+  created_at: string;
+  owner_id: string;
+  profiles?: {
     full_name: string;
     organization?: string;
   };
@@ -27,11 +29,13 @@ interface Project {
 
 const VerifierDashboard = () => {
   const { profile } = useAuth();
+  const { t } = useI18n();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [pendingProjects, setPendingProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [verificationNotes, setVerificationNotes] = useState('');
+  const [showContract, setShowContract] = useState(false);
   const [stats, setStats] = useState({
     pendingReviews: 0,
     verifiedProjects: 0,
@@ -46,20 +50,18 @@ const VerifierDashboard = () => {
 
   const fetchVerifierData = async () => {
     try {
-      // Fetch pending projects
       const { data: pendingData } = await supabase
         .from('projects')
         .select(`
           *,
-          profiles!projects_submitter_id_fkey (
+          profiles!projects_owner_id_fkey (
             full_name,
             organization
           )
         `)
-        .in('status', ['pending', 'under_review'])
-        .order('submitted_at', { ascending: true });
+        .in('status', ['pending'])
+        .order('created_at', { ascending: true });
 
-      // Fetch all projects for stats
       const { data: allProjects } = await supabase
         .from('projects')
         .select('status')
@@ -68,7 +70,22 @@ const VerifierDashboard = () => {
       const verifiedCount = allProjects?.filter(p => p.status === 'verified').length || 0;
       const rejectedCount = allProjects?.filter(p => p.status === 'rejected').length || 0;
 
-      setPendingProjects(pendingData || []);
+      if (pendingData) {
+        const mappedProjects: Project[] = pendingData.map(project => ({
+          id: project.id,
+          title: project.title,
+          location: project.location,
+          area_hectares: project.area_hectares,
+          description: project.description || '',
+          status: project.status,
+          estimated_credits: project.estimated_credits || 0,
+          created_at: project.created_at,
+          owner_id: project.owner_id,
+          profiles: Array.isArray(project.profiles) ? project.profiles[0] : project.profiles
+        }));
+        setPendingProjects(mappedProjects);
+      }
+
       setStats({
         pendingReviews: pendingData?.length || 0,
         verifiedProjects: verifiedCount,
@@ -89,20 +106,17 @@ const VerifierDashboard = () => {
 
   const handleVerifyProject = async (projectId: string, status: 'verified' | 'rejected') => {
     try {
-      // Update project status
       const { error: updateError } = await supabase
         .from('projects')
         .update({
           status,
           verifier_id: profile?.id,
-          verification_notes: verificationNotes,
           verified_at: status === 'verified' ? new Date().toISOString() : null
         })
         .eq('id', projectId);
 
       if (updateError) throw updateError;
 
-      // If verified, create carbon credits
       if (status === 'verified') {
         const project = pendingProjects.find(p => p.id === projectId);
         if (project) {
@@ -110,7 +124,7 @@ const VerifierDashboard = () => {
             .from('carbon_credits')
             .insert({
               project_id: projectId,
-              owner_id: project.submitter_id,
+              owner_id: project.owner_id,
               credits_amount: project.estimated_credits,
               status: 'active'
             });
@@ -124,7 +138,6 @@ const VerifierDashboard = () => {
         description: `Project ${status} successfully`,
       });
 
-      // Refresh data
       fetchVerifierData();
       setSelectedProject(null);
       setVerificationNotes('');
@@ -137,67 +150,55 @@ const VerifierDashboard = () => {
     }
   };
 
-  const generateCertificate = async (project: Project) => {
-    try {
-      // This would generate a PDF certificate
-      toast({
-        title: 'Certificate Generated',
-        description: 'Certificate has been generated and saved',
-      });
-      
-      // Navigate to certificates page or show certificate
-      navigate('/carbon-tracker');
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Failed to generate certificate',
-        variant: 'destructive'
-      });
-    }
-  };
-
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-muted rounded w-1/2"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-primary">Verifier Dashboard</h2>
+          <h2 className="text-2xl font-bold text-primary">{t('verification.title')}</h2>
           <p className="text-muted-foreground">Review and verify environmental projects</p>
         </div>
-        <Button onClick={() => navigate('/verification')}>
-          <Eye className="w-4 h-4 mr-2" />
-          View All Projects
-        </Button>
+        <div className="flex space-x-2">
+          <Button onClick={() => setShowContract(!showContract)} variant="outline">
+            <Code className="w-4 h-4 mr-2" />
+            {showContract ? 'Hide' : 'Show'} Contract
+          </Button>
+          <Button onClick={() => navigate('/verification')}>
+            <Eye className="w-4 h-4 mr-2" />
+            View All Projects
+          </Button>
+        </div>
       </div>
 
-      {/* Stats Cards */}
+      {showContract && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('verification.contractCode')}</CardTitle>
+            <CardDescription>
+              Solidity smart contract for carbon credit verification
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <pre className="bg-muted p-4 rounded-lg text-xs overflow-auto max-h-96">
+              <code>{contractCode}</code>
+            </pre>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Reviews</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('verification.pendingProjects')}</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">{stats.pendingReviews}</div>
-            <p className="text-xs text-muted-foreground">Awaiting verification</p>
           </CardContent>
         </Card>
 
@@ -208,7 +209,6 @@ const VerifierDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.verifiedProjects}</div>
-            <p className="text-xs text-muted-foreground">Successfully verified</p>
           </CardContent>
         </Card>
 
@@ -219,7 +219,6 @@ const VerifierDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{stats.rejectedProjects}</div>
-            <p className="text-xs text-muted-foreground">Projects rejected</p>
           </CardContent>
         </Card>
 
@@ -230,27 +229,20 @@ const VerifierDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalReviewed}</div>
-            <p className="text-xs text-muted-foreground">Projects processed</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Pending Projects */}
       <Card>
         <CardHeader>
           <CardTitle>Projects for Review</CardTitle>
-          <CardDescription>
-            Click on a project to review and verify
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {pendingProjects.length === 0 ? (
             <div className="text-center py-12">
               <CheckCircle className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-xl font-semibold mb-2">No Projects to Review</h3>
-              <p className="text-muted-foreground">
-                All projects have been reviewed. New submissions will appear here.
-              </p>
+              <p className="text-muted-foreground">All projects have been reviewed.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -267,11 +259,11 @@ const VerifierDashboard = () => {
                         {project.location} • {project.area_hectares} hectares • {project.estimated_credits} estimated credits
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Submitted {new Date(project.submitted_at).toLocaleDateString()}
+                        Created: {new Date(project.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
-                      {project.status.replace('_', ' ').toUpperCase()}
+                      PENDING
                     </Badge>
                   </div>
                   
@@ -295,7 +287,7 @@ const VerifierDashboard = () => {
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
-                          Verify & Approve
+                          {t('verification.approve')}
                         </Button>
                         
                         <Button
@@ -303,7 +295,7 @@ const VerifierDashboard = () => {
                           variant="destructive"
                         >
                           <XCircle className="w-4 h-4 mr-2" />
-                          Reject
+                          {t('verification.reject')}
                         </Button>
                         
                         <Button
@@ -315,24 +307,12 @@ const VerifierDashboard = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex space-x-2">
-                      <Button
-                        onClick={() => setSelectedProject(project)}
-                        variant="outline"
-                      >
-                        Review Project
-                      </Button>
-                      
-                      {project.status === 'verified' && (
-                        <Button
-                          onClick={() => generateCertificate(project)}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Award className="w-4 h-4 mr-2" />
-                          Generate Certificate
-                        </Button>
-                      )}
-                    </div>
+                    <Button
+                      onClick={() => setSelectedProject(project)}
+                      variant="outline"
+                    >
+                      Review Project
+                    </Button>
                   )}
                 </div>
               ))}

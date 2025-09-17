@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface Profile {
   id: string;
   full_name: string;
-  role: 'admin' | 'ngo' | 'panchayat' | 'verifier';
+  role: 'ngo' | 'localpeople' | 'verifier' | 'company';
   organization?: string;
   phone?: string;
   address?: string;
@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .maybeSingle();
     
     if (!error && data) {
-      setProfile(data);
+      setProfile(data as Profile);
     }
   };
 

@@ -22,21 +22,15 @@ const Dashboard = () => {
   // Render appropriate dashboard based on user role
   const renderRoleDashboard = () => {
     switch (profile.role) {
-      case 'admin':
-        return (
-          <React.Suspense fallback={<div className="animate-pulse">Loading admin dashboard...</div>}>
-            <AdminDashboard />
-          </React.Suspense>
-        );
       case 'ngo':
         return (
           <React.Suspense fallback={<div className="animate-pulse">Loading NGO dashboard...</div>}>
             <NGODashboard />
           </React.Suspense>
         );
-      case 'panchayat':
+      case 'localpeople':
         return (
-          <React.Suspense fallback={<div className="animate-pulse">Loading Panchayat dashboard...</div>}>
+          <React.Suspense fallback={<div className="animate-pulse">Loading Local People dashboard...</div>}>
             <PanchayatDashboard />
           </React.Suspense>
         );
@@ -44,6 +38,12 @@ const Dashboard = () => {
         return (
           <React.Suspense fallback={<div className="animate-pulse">Loading Verifier dashboard...</div>}>
             <VerifierDashboard />
+          </React.Suspense>
+        );
+      case 'company':
+        return (
+          <React.Suspense fallback={<div className="animate-pulse">Loading Company dashboard...</div>}>
+            <AdminDashboard />
           </React.Suspense>
         );
       default:

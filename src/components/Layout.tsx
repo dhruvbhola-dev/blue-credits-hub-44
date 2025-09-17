@@ -1,19 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard, 
   FileText, 
   CheckCircle, 
   TrendingUp, 
-  Upload, 
   Store,
   LogOut,
   Menu,
   X
 } from 'lucide-react';
-import { useState } from 'react';
+import ProfileBox from '@/components/ProfileBox';
+import LanguageToggle from '@/components/LanguageToggle';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,6 +22,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, profile, signOut } = useAuth();
+  const { t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -31,12 +33,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const navigation = user ? [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Submit Project', href: '/submit-project', icon: FileText },
-    ...(profile?.role === 'verifier' ? [{ name: 'Verification', href: '/verification', icon: CheckCircle }] : []),
-    { name: 'Carbon Tracker', href: '/carbon-tracker', icon: TrendingUp },
-    { name: 'Mobile Upload', href: '/mobile-upload', icon: Upload },
-    { name: 'Marketplace', href: '/marketplace', icon: Store },
+    { name: t('navigation.dashboard'), href: '/dashboard', icon: LayoutDashboard },
+    ...(profile?.role === 'ngo' || profile?.role === 'localpeople' ? [{ name: t('navigation.reporting'), href: '/reporting', icon: FileText }] : []),
+    ...(profile?.role === 'verifier' ? [{ name: t('navigation.verification'), href: '/verification', icon: CheckCircle }] : []),
+    { name: t('navigation.carbonTracker'), href: '/carbon-tracker', icon: TrendingUp },
+    ...(profile?.role === 'company' ? [{ name: t('navigation.marketplace'), href: '/marketplace', icon: Store }] : []),
   ] : [];
 
   return (
@@ -51,26 +52,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             
             {user ? (
               <div className="hidden md:flex items-center space-x-4">
-                <span className="text-sm">
-                  Welcome, {profile?.full_name || user.email}
-                </span>
+                <LanguageToggle />
                 <Button 
                   variant="secondary" 
                   size="sm" 
                   onClick={handleSignOut}
                 >
                   <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
+                  {t('common.signOut')}
                 </Button>
               </div>
             ) : (
-              <div className="hidden md:flex space-x-2">
+              <div className="hidden md:flex items-center space-x-2">
+                <LanguageToggle />
                 <Button 
                   variant="secondary" 
                   size="sm" 
                   onClick={() => navigate('/login')}
                 >
-                  Login
+                  {t('common.login')}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -78,7 +78,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   onClick={() => navigate('/signup')}
                   className="text-primary-foreground border-primary-foreground hover:bg-primary-foreground hover:text-primary"
                 >
-                  Sign Up
+                  {t('common.signup')}
                 </Button>
               </div>
             )}
@@ -100,27 +100,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Sidebar */}
         {user && (
           <aside className={`${mobileMenuOpen ? 'block' : 'hidden'} md:block w-64 bg-card border-r min-h-screen`}>
-            <nav className="p-4 space-y-2">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-secondary hover:text-secondary-foreground'
-                    }`}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Icon className="w-5 h-5 mr-3" />
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </nav>
+            <div className="p-4">
+              {/* Profile Box */}
+              {profile && (
+                <div className="mb-6">
+                  <ProfileBox
+                    name={profile.full_name}
+                    email={user.email || ''}
+                    role={profile.role}
+                    organization={profile.organization}
+                  />
+                </div>
+              )}
+              
+              {/* Navigation */}
+              <nav className="space-y-2">
+                {navigation.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'text-muted-foreground hover:bg-secondary hover:text-secondary-foreground hover:shadow-sm'
+                      }`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Icon className="w-5 h-5 mr-3" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
           </aside>
         )}
 

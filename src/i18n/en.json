@@ -1,0 +1,108 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "signOut": "Sign Out",
+    "login": "Login",
+    "signup": "Sign Up",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "loading": "Loading",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "required": "Required"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "reporting": "Reporting",
+    "carbonTracker": "Carbon Tracker",
+    "marketplace": "Marketplace",
+    "verification": "Verification",
+    "projectSubmission": "Project Submission"
+  },
+  "auth": {
+    "signInTitle": "Sign In to BlueCarbon",
+    "signUpTitle": "Create Account",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full Name",
+    "role": "Role",
+    "organization": "Organization",
+    "emailPlaceholder": "Enter your email",
+    "passwordPlaceholder": "Enter your password",
+    "signInButton": "Sign In",
+    "signUpButton": "Create Account",
+    "alreadyHaveAccount": "Already have an account?",
+    "dontHaveAccount": "Don't have an account?",
+    "signInHere": "Sign in here",
+    "signUpHere": "Sign up here"
+  },
+  "roles": {
+    "ngo": "NGO",
+    "localpeople": "Local People",
+    "verifier": "Verifier",
+    "company": "Company"
+  },
+  "dashboard": {
+    "welcomeBack": "Welcome back",
+    "totalProjects": "Total Projects",
+    "totalCredits": "Total Credits",
+    "pendingVerification": "Pending Verification",
+    "recentActivity": "Recent Activity"
+  },
+  "reporting": {
+    "title": "Project Reporting",
+    "projectName": "Project Name",
+    "projectNamePlaceholder": "Enter project name",
+    "area": "Area (Hectares)",
+    "areaPlaceholder": "Enter area in hectares",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe your blue carbon project",
+    "location": "Location",
+    "locationPlaceholder": "Select or enter location",
+    "uploadPhotos": "Upload Photos",
+    "photosHelper": "Upload photos of your project site",
+    "submitProject": "Submit Project",
+    "projectSubmitted": "Project submitted successfully for verification"
+  },
+  "verification": {
+    "title": "Project Verification",
+    "pendingProjects": "Pending Projects",
+    "assignTokens": "Assign Tokens",
+    "approve": "Approve",
+    "reject": "Reject",
+    "generateCertificate": "Generate Certificate",
+    "contractCode": "Smart Contract Code",
+    "projectDetails": "Project Details",
+    "verificationComplete": "Verification Complete"
+  },
+  "marketplace": {
+    "title": "Carbon Credit Marketplace",
+    "buyCredits": "Buy Credits",
+    "sellCredits": "Sell Credits",
+    "creditsAvailable": "Credits Available",
+    "pricePerCredit": "Price per Credit",
+    "totalPrice": "Total Price",
+    "purchaseComplete": "Purchase completed successfully"
+  },
+  "carbonTracker": {
+    "title": "Carbon Tracker",
+    "mapTitle": "Blue Carbon Projects Map",
+    "projectStats": "Project Statistics",
+    "viewDetails": "View Details"
+  },
+  "certificate": {
+    "title": "Carbon Credit Certificate",
+    "download": "Download Certificate",
+    "projectOwner": "Project Owner",
+    "verifiedBy": "Verified By",
+    "certificateId": "Certificate ID",
+    "issueDate": "Issue Date"
+  }
+}
