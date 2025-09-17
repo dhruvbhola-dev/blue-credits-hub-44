@@ -83,6 +83,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email,
       password,
     });
+    
+    // Check if email is verified after successful login
+    if (!error) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && !user.email_confirmed_at) {
+        await supabase.auth.signOut();
+        return { error: { message: "Please verify your email before logging in. Check your inbox for verification link." } };
+      }
+    }
+    
     return { error };
   };
 

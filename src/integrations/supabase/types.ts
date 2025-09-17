@@ -66,6 +66,55 @@ export type Database = {
           },
         ]
       }
+      certificates: {
+        Row: {
+          certificate_url: string | null
+          created_at: string | null
+          generated_at: string | null
+          generated_by: string
+          id: string
+          project_id: string
+        }
+        Insert: {
+          certificate_url?: string | null
+          created_at?: string | null
+          generated_at?: string | null
+          generated_by: string
+          id?: string
+          project_id: string
+        }
+        Update: {
+          certificate_url?: string | null
+          created_at?: string | null
+          generated_at?: string | null
+          generated_by?: string
+          id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificates_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificates_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_listings: {
         Row: {
           created_at: string | null
@@ -157,9 +206,11 @@ export type Database = {
       projects: {
         Row: {
           area_hectares: number
+          certificate_id: string | null
           description: string
           documents: string[] | null
           estimated_credits: number
+          gps_coordinates: Json | null
           id: string
           images: string[] | null
           location: string
@@ -173,9 +224,11 @@ export type Database = {
         }
         Insert: {
           area_hectares: number
+          certificate_id?: string | null
           description: string
           documents?: string[] | null
           estimated_credits: number
+          gps_coordinates?: Json | null
           id?: string
           images?: string[] | null
           location: string
@@ -189,9 +242,11 @@ export type Database = {
         }
         Update: {
           area_hectares?: number
+          certificate_id?: string | null
           description?: string
           documents?: string[] | null
           estimated_credits?: number
+          gps_coordinates?: Json | null
           id?: string
           images?: string[] | null
           location?: string
@@ -204,6 +259,13 @@ export type Database = {
           verifier_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_certificate_id_fkey"
+            columns: ["certificate_id"]
+            isOneToOne: false
+            referencedRelation: "certificates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_submitter_id_fkey"
             columns: ["submitter_id"]
