@@ -268,7 +268,10 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      can_view_sensitive_profile_data: {
+        Args: { profile_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: "admin" | "ngo" | "panchayat" | "verifier"
