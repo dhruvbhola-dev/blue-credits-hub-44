@@ -12,17 +12,14 @@ import { Store, Leaf, DollarSign, MapPin, Calendar, TrendingUp } from 'lucide-re
 interface MarketplaceListing {
   id: string;
   price_per_credit: number;
-  credits_available: number;
+  credits_amount: number;
   status: string;
   created_at: string;
-  carbon_credits: {
-    id: string;
-    credits_amount: number;
-    projects: {
-      title: string;
-      location: string;
-      area_hectares: number;
-    };
+  project_id: string;
+  projects: {
+    title: string;
+    location: string;
+    area_hectares: number;
   };
   profiles: {
     full_name: string;
@@ -54,14 +51,10 @@ const Marketplace = () => {
         .from('marketplace_listings')
         .select(`
           *,
-          carbon_credits (
-            id,
-            credits_amount,
-            projects (
-              title,
-              location,
-              area_hectares
-            )
+          projects (
+            title,
+            location,
+            area_hectares
           ),
           profiles!marketplace_listings_seller_id_fkey (
             full_name,
@@ -118,10 +111,10 @@ const Marketplace = () => {
       const { error } = await supabase
         .from('marketplace_listings')
         .insert({
-          credit_id: newListing.creditId,
+          project_id: newListing.creditId,
           seller_id: profile.id,
           price_per_credit: parseFloat(newListing.pricePerCredit),
-          credits_available: parseFloat(newListing.creditsToSell),
+          credits_amount: parseFloat(newListing.creditsToSell),
           status: 'active'
         });
 
@@ -212,14 +205,14 @@ const Marketplace = () => {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {listings.reduce((sum, listing) => sum + listing.credits_available, 0).toFixed(0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Credits Available</p>
-          </CardContent>
-        </Card>
+         <Card>
+           <CardContent className="pt-6">
+             <div className="text-2xl font-bold">
+               {listings.reduce((sum, listing) => sum + listing.credits_amount, 0).toFixed(0)}
+             </div>
+             <p className="text-xs text-muted-foreground">Credits Available</p>
+           </CardContent>
+         </Card>
         
         <Card>
           <CardContent className="pt-6">
@@ -234,15 +227,15 @@ const Marketplace = () => {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">
-              $
-              {listings.reduce((sum, listing) => sum + (listing.credits_available * listing.price_per_credit), 0).toFixed(0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Total Market Value</p>
-          </CardContent>
-        </Card>
+         <Card>
+           <CardContent className="pt-6">
+             <div className="text-2xl font-bold text-green-600">
+               $
+               {listings.reduce((sum, listing) => sum + (listing.credits_amount * listing.price_per_credit), 0).toFixed(0)}
+             </div>
+             <p className="text-xs text-muted-foreground">Total Market Value</p>
+           </CardContent>
+         </Card>
       </div>
 
       {/* Create Listing Form */}
@@ -323,15 +316,15 @@ const Marketplace = () => {
             <Card key={listing.id} className="overflow-hidden">
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">
-                      {listing.carbon_credits.projects?.title}
-                    </CardTitle>
-                    <CardDescription className="flex items-center mt-1">
-                      <MapPin className="w-3 h-3 mr-1" />
-                      {listing.carbon_credits.projects?.location}
-                    </CardDescription>
-                  </div>
+                 <div>
+                   <CardTitle className="text-lg">
+                     {listing.projects?.title}
+                   </CardTitle>
+                   <CardDescription className="flex items-center mt-1">
+                     <MapPin className="w-3 h-3 mr-1" />
+                     {listing.projects?.location}
+                   </CardDescription>
+                 </div>
                   <Badge variant="outline" className="bg-green-50 text-green-700">
                     <Leaf className="w-3 h-3 mr-1" />
                     Active
@@ -340,23 +333,23 @@ const Marketplace = () => {
               </CardHeader>
               
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Available Credits</p>
-                    <p className="font-semibold">{listing.credits_available} tCO2e</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Price per Credit</p>
-                    <p className="font-semibold text-green-600">
-                      ${listing.price_per_credit.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="text-sm">
-                  <p className="text-muted-foreground">Project Area</p>
-                  <p>{listing.carbon_credits.projects?.area_hectares} hectares</p>
-                </div>
+                 <div className="grid grid-cols-2 gap-4 text-sm">
+                   <div>
+                     <p className="text-muted-foreground">Available Credits</p>
+                     <p className="font-semibold">{listing.credits_amount} tCO2e</p>
+                   </div>
+                   <div>
+                     <p className="text-muted-foreground">Price per Credit</p>
+                     <p className="font-semibold text-green-600">
+                       ${listing.price_per_credit.toFixed(2)}
+                     </p>
+                   </div>
+                 </div>
+                 
+                 <div className="text-sm">
+                   <p className="text-muted-foreground">Project Area</p>
+                   <p>{listing.projects?.area_hectares} hectares</p>
+                 </div>
                 
                 <div className="text-sm">
                   <p className="text-muted-foreground">Seller</p>
@@ -368,25 +361,25 @@ const Marketplace = () => {
                   )}
                 </div>
                 
-                <div className="pt-2 border-t">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-lg font-bold">
-                      Total: ${(listing.credits_available * listing.price_per_credit).toFixed(2)}
-                    </span>
-                  </div>
-                  
-                  <Button 
-                    className="w-full" 
-                    onClick={() => purchaseCredits(
-                      listing.id, 
-                      listing.credits_available, 
-                      listing.price_per_credit
-                    )}
-                  >
-                    <DollarSign className="w-4 h-4 mr-2" />
-                    Purchase Credits
-                  </Button>
-                </div>
+                 <div className="pt-2 border-t">
+                   <div className="flex items-center justify-between mb-3">
+                     <span className="text-lg font-bold">
+                       Total: ${(listing.credits_amount * listing.price_per_credit).toFixed(2)}
+                     </span>
+                   </div>
+                   
+                   <Button 
+                     className="w-full" 
+                     onClick={() => purchaseCredits(
+                       listing.id, 
+                       listing.credits_amount, 
+                       listing.price_per_credit
+                     )}
+                   >
+                     <DollarSign className="w-4 h-4 mr-2" />
+                     Purchase Credits
+                   </Button>
+                 </div>
                 
                 <p className="text-xs text-muted-foreground flex items-center">
                   <Calendar className="w-3 h-3 mr-1" />

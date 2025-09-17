@@ -51,14 +51,12 @@ const ProjectSubmission = () => {
       const { data, error } = await supabase
         .from('projects')
         .insert({
-          submitter_id: profile.id,
+          owner_id: profile.id,
           title: formData.title,
           description: formData.description,
           location: formData.location,
           area_hectares: parseFloat(formData.areaHectares),
           estimated_credits: parseFloat(formData.estimatedCredits),
-          images: formData.images,
-          documents: formData.documents,
           status: 'pending'
         })
         .select()

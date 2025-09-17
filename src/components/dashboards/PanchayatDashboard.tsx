@@ -38,8 +38,8 @@ const PanchayatDashboard = () => {
       const { data: projectsData } = await supabase
         .from('projects')
         .select('*')
-        .eq('submitter_id', profile.id)
-        .order('submitted_at', { ascending: false });
+        .eq('owner_id', profile.id)
+        .order('created_at', { ascending: false });
 
       // Fetch Panchayat's carbon credits
       const { data: creditsData } = await supabase
@@ -305,7 +305,7 @@ const PanchayatDashboard = () => {
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Submitted {new Date(project.submitted_at).toLocaleDateString()}
+                      Submitted {new Date(project.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="text-right">

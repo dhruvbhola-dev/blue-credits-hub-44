@@ -17,8 +17,8 @@ interface Project {
   area_hectares: number;
   estimated_credits: number;
   status: string;
-  submitted_at: string;
-  submitter_id: string;
+  created_at: string;
+  owner_id: string;
   profiles: {
     full_name: string;
     organization: string;
@@ -44,13 +44,13 @@ const Verification = () => {
         .from('projects')
         .select(`
           *,
-          profiles!projects_submitter_id_fkey (
+          profiles!projects_owner_id_fkey (
             full_name,
             organization
           )
         `)
         .in('status', ['pending', 'under_review'])
-        .order('submitted_at', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
       setProjects(data || []);
@@ -92,7 +92,7 @@ const Verification = () => {
             .from('carbon_credits')
             .insert({
               project_id: projectId,
-              owner_id: project.submitter_id,
+              owner_id: project.owner_id,
               credits_amount: project.estimated_credits,
               status: 'active'
             });
@@ -224,7 +224,7 @@ const Verification = () => {
                       </span>
                       <span className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
-                        {new Date(project.submitted_at).toLocaleDateString()}
+                        {new Date(project.created_at).toLocaleDateString()}
                       </span>
                     </CardDescription>
                   </div>
