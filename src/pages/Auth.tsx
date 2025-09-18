@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,13 @@ import { Loader2 } from 'lucide-react';
 const Auth = () => {
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
+  // figure out which tab should be open
+  const defaultTab = location.pathname === "/signup" ? "signup" : "login";
+
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -111,7 +115,7 @@ const Auth = () => {
         </CardHeader>
         
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -181,7 +185,7 @@ const Auth = () => {
                       <SelectItem value="ngo">NGO</SelectItem>
                       <SelectItem value="panchayat">Panchayat</SelectItem>
                       <SelectItem value="verifier">Verifier</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="company">Company</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

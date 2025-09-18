@@ -68,14 +68,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Button 
                   variant="secondary" 
                   size="sm" 
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/auth')}
                 >
                   {t('common.login')}
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => navigate('/signup')}
+                  onClick={() => navigate('/auth')}
                   className="text-primary-foreground border-primary-foreground hover:bg-primary-foreground hover:text-primary"
                 >
                   {t('common.signup')}
@@ -87,7 +87,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <Button
               variant="ghost"
               size="sm"
-              className="md:hidden"
+              className="md:hidden text-primary-foreground hover:bg-primary-foreground/20"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -99,7 +99,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="flex">
         {/* Sidebar */}
         {user && (
-          <aside className={`${mobileMenuOpen ? 'block' : 'hidden'} md:block w-64 bg-card border-r min-h-screen`}>
+          <aside className={`${mobileMenuOpen ? 'block' : 'hidden'} md:block w-64 bg-card border-r min-h-screen transition-all duration-300 md:transition-none ${mobileMenuOpen ? 'fixed inset-0 z-50 md:relative md:inset-auto md:z-auto' : ''}`}>
             <div className="p-4">
               {/* Profile Box */}
               {profile && (
