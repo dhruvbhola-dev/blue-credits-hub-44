@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Store, Leaf, DollarSign, MapPin, Calendar, TrendingUp } from 'lucide-react';
+import { Store, Leaf, DollarSign, MapPin, Calendar, TrendingUp, Wallet } from 'lucide-react';
+import { getContract, getContractReadOnly, getWalletAddress } from '@/contracts/contract';
+import { ethers } from 'ethers';
 
 interface MarketplaceListing {
   id: string;
@@ -39,10 +41,34 @@ const Marketplace = () => {
     pricePerCredit: '',
     creditsToSell: ''
   });
+  const [blockchainData, setBlockchainData] = useState<{[key: string]: any}>({});
+  const [purchasing, setPurchasing] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     fetchMarketplaceData();
+    fetchBlockchainData();
   }, []);
+
+  const fetchBlockchainData = async () => {
+    try {
+      const contract = await getContractReadOnly();
+      const walletAddress = await getWalletAddress();
+      
+      // Fetch seller data
+      const sellerData = await contract.sellers(walletAddress);
+      
+      // Fetch buyer data
+      const buyerCredits = await contract.buyers(walletAddress);
+      
+      setBlockchainData({
+        sellerCredits: sellerData.credits.toString(),
+        sellerForSale: sellerData.forSale.toString(),
+        buyerCredits: buyerCredits.toString()
+      });
+    } catch (error) {
+      console.error('Error fetching blockchain data:', error);
+    }
+  };
 
   const fetchMarketplaceData = async () => {
     try {
@@ -138,7 +164,7 @@ const Marketplace = () => {
     }
   };
 
-  const purchaseCredits = async (listingId: string, creditsAmount: number, pricePerCredit: number) => {
+  const purchaseCredits = async (listingId: string, creditsAmount: number, pricePerCredit: number, sellerAddress: string) => {
     if (!profile) {
       toast({
         title: 'Error',
@@ -148,11 +174,42 @@ const Marketplace = () => {
       return;
     }
 
-    // This is a simplified purchase flow
-    toast({
-      title: 'Purchase Simulation',
-      description: `Would purchase ${creditsAmount} credits for $${(creditsAmount * pricePerCredit).toFixed(2)}. Integration with payment system pending.`
-    });
+    setPurchasing(prev => ({ ...prev, [listingId]: true }));
+
+    try {
+      const contract = await getContract();
+      const totalCost = creditsAmount * pricePerCredit;
+      
+      // Convert to wei (assuming price is in ETH)
+      const costInWei = ethers.parseEther(totalCost.toString());
+      
+      const tx = await contract.buy(sellerAddress, creditsAmount, { value: costInWei });
+      
+      toast({
+        title: 'Transaction Submitted',
+        description: 'Purchase transaction sent to blockchain...',
+      });
+      
+      await tx.wait();
+      
+      toast({
+        title: 'Purchase Successful',
+        description: `Successfully purchased ${creditsAmount} credits for ${totalCost} ETH`,
+      });
+      
+      // Refresh data
+      await Promise.all([fetchMarketplaceData(), fetchBlockchainData()]);
+      
+    } catch (error: any) {
+      console.error('Purchase failed:', error);
+      toast({
+        title: 'Purchase Failed',
+        description: error.message || 'Failed to complete purchase',
+        variant: 'destructive'
+      });
+    } finally {
+      setPurchasing(prev => ({ ...prev, [listingId]: false }));
+    }
   };
 
   if (loading) {
@@ -202,6 +259,24 @@ const Marketplace = () => {
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{listings.length}</div>
             <p className="text-xs text-muted-foreground">Active Listings</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-blue-600">
+              {blockchainData.sellerCredits || '0'}
+            </div>
+            <p className="text-xs text-muted-foreground">My Credits (Blockchain)</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-green-600">
+              {blockchainData.buyerCredits || '0'}
+            </div>
+            <p className="text-xs text-muted-foreground">Owned Credits</p>
           </CardContent>
         </Card>
         
@@ -368,17 +443,39 @@ const Marketplace = () => {
                      </span>
                    </div>
                    
-                   <Button 
-                     className="w-full" 
-                     onClick={() => purchaseCredits(
-                       listing.id, 
-                       listing.credits_amount, 
-                       listing.price_per_credit
-                     )}
-                   >
-                     <DollarSign className="w-4 h-4 mr-2" />
-                     Purchase Credits
-                   </Button>
+                    <Button 
+                      className="w-full" 
+                      onClick={async () => {
+                        try {
+                          const sellerWallet = await getWalletAddress(); // In real app, this would be the actual seller's address
+                          await purchaseCredits(
+                            listing.id, 
+                            listing.credits_amount, 
+                            listing.price_per_credit,
+                            sellerWallet
+                          );
+                        } catch (error: any) {
+                          toast({
+                            title: 'Error',
+                            description: error.message || 'Failed to initiate purchase',
+                            variant: 'destructive'
+                          });
+                        }
+                      }}
+                      disabled={purchasing[listing.id]}
+                    >
+                      {purchasing[listing.id] ? (
+                        <>
+                          <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Purchasing...
+                        </>
+                      ) : (
+                        <>
+                          <Wallet className="w-4 h-4 mr-2" />
+                          Purchase Credits
+                        </>
+                      )}
+                    </Button>
                  </div>
                 
                 <p className="text-xs text-muted-foreground flex items-center">

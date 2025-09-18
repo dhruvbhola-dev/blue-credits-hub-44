@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, X, Clock, FileText, MapPin, Calendar } from 'lucide-react';
+import { CheckCircle, X, Clock, FileText, MapPin, Calendar, Wallet } from 'lucide-react';
+import { getContract, getWalletAddress } from '@/contracts/contract';
 
 interface Project {
   id: string;
@@ -31,6 +32,7 @@ const Verification = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
+  const [blockchainLoading, setBlockchainLoading] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     if (profile?.role === 'verifier') {
@@ -63,6 +65,40 @@ const Verification = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBlockchainVerification = async (projectId: string, sellerAddress: string, amount: number) => {
+    setBlockchainLoading(prev => ({ ...prev, [projectId]: true }));
+    
+    try {
+      const contract = await getContract();
+      const tx = await contract.assignTokens(sellerAddress, amount);
+      
+      toast({
+        title: 'Transaction Submitted',
+        description: 'Waiting for blockchain confirmation...',
+      });
+      
+      await tx.wait();
+      
+      toast({
+        title: 'Success',
+        description: `Tokens assigned successfully to ${sellerAddress}`,
+      });
+      
+      // Update the project status in Supabase after blockchain success
+      await handleVerification(projectId, 'verify');
+      
+    } catch (error: any) {
+      console.error('Blockchain verification failed:', error);
+      toast({
+        title: 'Blockchain Error',
+        description: error.message || 'Failed to assign tokens on blockchain',
+        variant: 'destructive'
+      });
+    } finally {
+      setBlockchainLoading(prev => ({ ...prev, [projectId]: false }));
     }
   };
 
@@ -103,10 +139,12 @@ const Verification = () => {
         }
       }
 
-      toast({
-        title: 'Success',
-        description: `Project ${action === 'verify' ? 'verified' : 'rejected'} successfully`,
-      });
+      if (action === 'reject') {
+        toast({
+          title: 'Success',
+          description: 'Project rejected successfully',
+        });
+      }
 
       // Refresh the list
       fetchPendingProjects();
@@ -283,11 +321,32 @@ const Verification = () => {
                   )}
                   
                   <Button
-                    onClick={() => handleVerification(project.id, 'verify')}
-                    className="flex items-center bg-green-600 hover:bg-green-700"
+                    onClick={async () => {
+                      try {
+                        const walletAddress = await getWalletAddress();
+                        await handleBlockchainVerification(project.id, walletAddress, project.estimated_credits);
+                      } catch (error: any) {
+                        toast({
+                          title: 'Error',
+                          description: error.message || 'Failed to connect wallet',
+                          variant: 'destructive'
+                        });
+                      }
+                    }}
+                    disabled={blockchainLoading[project.id]}
+                    className="flex items-center bg-green-600 hover:bg-green-700 disabled:opacity-50"
                   >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Verify & Issue Credits
+                    {blockchainLoading[project.id] ? (
+                      <>
+                        <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Verifying on Blockchain...
+                      </>
+                    ) : (
+                      <>
+                        <Wallet className="w-4 h-4 mr-2" />
+                        Verify & Assign Tokens
+                      </>
+                    )}
                   </Button>
                   
                   <Button

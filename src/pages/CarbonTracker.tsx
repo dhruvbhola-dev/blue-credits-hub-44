@@ -1,14 +1,79 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import CarbonMap from '@/components/Map/CarbonMap';
-import { AlertTriangle } from 'lucide-react';
+import { TrendingUp, Leaf, Award, BarChart3, Wallet } from 'lucide-react';
+import { getContractReadOnly, getWalletAddress } from '@/contracts/contract';
+
+interface CarbonCredit {
+  id: string;
+  credits_amount: number;
+  status: string;
+  created_at: string;
+  projects: {
+    title: string;
+    location: string;
+  };
+}
 
 const CarbonTracker = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const [credits, setCredits] = useState<CarbonCredit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [blockchainBalance, setBlockchainBalance] = useState({
+    sellerCredits: '0',
+    ownedCredits: '0'
+  });
+
+  useEffect(() => {
+    if (profile) {
+      fetchCredits();
+      fetchBlockchainBalance();
+    }
+  }, [profile]);
+
+  const fetchBlockchainBalance = async () => {
+    try {
+      const contract = await getContractReadOnly();
+      const walletAddress = await getWalletAddress();
+      
+      const sellerData = await contract.sellers(walletAddress);
+      const buyerCredits = await contract.buyers(walletAddress);
+      
+      setBlockchainBalance({
+        sellerCredits: sellerData.credits.toString(),
+        ownedCredits: buyerCredits.toString()
+      });
+    } catch (error) {
+      console.error('Error fetching blockchain balance:', error);
+    }
+  };
+
+  const fetchCredits = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('carbon_credits')
+        .select(`
+          *,
+          projects (
+            title,
+            location
+          )
+        `)
+        .eq('owner_id', profile?.id);
+
+      if (error) throw error;
+      setCredits(data || []);
+    } catch (error) {
+      console.error('Error fetching credits:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -19,11 +84,59 @@ const CarbonTracker = () => {
             Monitor your carbon credits and environmental impact
           </p>
         </div>
-        {/* Red button as requested - placeholder page */}
-        <Button onClick={() => navigate('/placeholder-page')} className="bg-red-600 hover:bg-red-700">
-          <AlertTriangle className="w-4 h-4 mr-2" />
-          Placeholder Page
-        </Button>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Leaf className="h-8 w-8 text-green-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Database Credits</p>
+                <p className="text-2xl font-bold">
+                  {credits.reduce((sum, credit) => sum + credit.credits_amount, 0)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Wallet className="h-8 w-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Blockchain Credits</p>
+                <p className="text-2xl font-bold text-blue-600">{blockchainBalance.sellerCredits}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Award className="h-8 w-8 text-purple-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Owned Credits</p>
+                <p className="text-2xl font-bold text-purple-600">{blockchainBalance.ownedCredits}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <TrendingUp className="h-8 w-8 text-green-500" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Active Projects</p>
+                <p className="text-2xl font-bold">{credits.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Interactive Map */}
