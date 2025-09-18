@@ -35,6 +35,7 @@ const Verification = () => {
   const [loading, setLoading] = useState(true);
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
   const [blockchainLoading, setBlockchainLoading] = useState<{[key: string]: boolean}>({});
+  const [rejectLoading, setRejectLoading] = useState<{[key: string]: boolean}>({});
   const [pendingAddresses, setPendingAddresses] = useState<string[]>([]);
   const [showCertificate, setShowCertificate] = useState<{[key: string]: boolean}>({});
 
@@ -125,6 +126,11 @@ const Verification = () => {
   const handleVerification = async (projectId: string, action: 'verify' | 'reject') => {
     if (!profile) return;
 
+    // Set loading state for reject action
+    if (action === 'reject') {
+      setRejectLoading(prev => ({ ...prev, [projectId]: true }));
+    }
+
     try {
       const updates: any = {
         status: action === 'verify' ? 'verified' : 'rejected',
@@ -157,18 +163,21 @@ const Verification = () => {
             console.error('Error creating carbon credits:', creditError);
           }
         }
-      }
-
-      if (action === 'reject') {
+        
         toast({
           title: 'Success',
-          description: 'Project rejected successfully',
+          description: 'Project verified and credits assigned successfully',
+        });
+      } else {
+        // Immediately remove rejected project from state
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+        
+        toast({
+          title: 'Success',
+          description: 'Project rejected and removed from pending list',
         });
       }
 
-      // Refresh the list
-      fetchPendingProjects();
-      
       // Clear notes
       setVerificationNotes(prev => {
         const newNotes = { ...prev };
@@ -176,12 +185,21 @@ const Verification = () => {
         return newNotes;
       });
 
+      // Refresh the list to ensure consistency
+      if (action === 'verify') {
+        fetchPendingProjects();
+      }
+
     } catch (error: any) {
       toast({
         title: 'Error',
         description: error.message || `Failed to ${action} project`,
         variant: 'destructive'
       });
+    } finally {
+      if (action === 'reject') {
+        setRejectLoading(prev => ({ ...prev, [projectId]: false }));
+      }
     }
   };
 
@@ -350,10 +368,20 @@ const Verification = () => {
                   <Button
                     variant="destructive"
                     onClick={() => handleVerification(project.id, 'reject')}
+                    disabled={rejectLoading[project.id]}
                     className="flex items-center"
                   >
-                    <X className="w-4 h-4 mr-2" />
-                    Reject
+                    {rejectLoading[project.id] ? (
+                      <>
+                        <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Rejecting...
+                      </>
+                    ) : (
+                      <>
+                        <X className="w-4 h-4 mr-2" />
+                        Reject
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>
