@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Wallet, RefreshCw, ExternalLink } from 'lucide-react';
 import { 
   getWalletAddress, 
@@ -21,6 +23,7 @@ const BlockchainWallet: React.FC<BlockchainWalletProps> = ({
   autoRefresh = true 
 }) => {
   const { toast } = useToast();
+  const { profile } = useAuth();
   const [walletAddress, setWalletAddress] = useState<string>('');
   const [sellerData, setSellerData] = useState<any>(null);
   const [buyerCredits, setBuyerCredits] = useState<number>(0);
@@ -43,6 +46,14 @@ const BlockchainWallet: React.FC<BlockchainWalletProps> = ({
       const address = await getWalletAddress();
       setWalletAddress(address);
       setConnected(true);
+
+      // Update user profile with wallet address if user is logged in
+      if (profile?.id && address) {
+        await supabase
+          .from('profiles')
+          .update({ wallet_address: address })
+          .eq('id', profile.id);
+      }
 
       // Get verifier address for comparison
       const verifier = await getVerifierAddress();
