@@ -35,7 +35,6 @@ const Verification = () => {
   const [loading, setLoading] = useState(true);
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
   const [blockchainLoading, setBlockchainLoading] = useState<{[key: string]: boolean}>({});
-  const [rejectLoading, setRejectLoading] = useState<{[key: string]: boolean}>({});
   const [pendingAddresses, setPendingAddresses] = useState<string[]>([]);
   const [showCertificate, setShowCertificate] = useState<{[key: string]: boolean}>({});
 
@@ -73,49 +72,33 @@ const Verification = () => {
     }
   };
 
-  const handleGiveCredit = async (projectId: string) => {
+  const handleBlockchainVerification = async (projectId: string, sellerAddress: string, amount: number) => {
     setBlockchainLoading(prev => ({ ...prev, [projectId]: true }));
     
     try {
-      // Get the project owner's wallet address
-      const project = projects.find(p => p.id === projectId);
-      if (!project) throw new Error('Project not found');
-
-      // Get owner's profile to find wallet address
-      const { data: ownerProfile } = await supabase
-        .from('profiles')
-        .select('wallet_address')
-        .eq('id', project.owner_id)
-        .single();
-
-      if (!ownerProfile?.wallet_address) {
-        throw new Error('Project owner must connect their wallet first');
-      }
-
       const contract = await getContract();
-      // Assign 10 credits as specified
-      const tx = await contract.assignTokens(ownerProfile.wallet_address, 10);
+      const tx = await contract.assignTokens(sellerAddress, amount);
       
       toast({
         title: 'Transaction Submitted',
-        description: 'Assigning credits on blockchain...',
+        description: 'Waiting for blockchain confirmation...',
       });
       
       await tx.wait();
       
       toast({
-        title: 'Credits Assigned!',
-        description: `Successfully assigned 10 credits to ${ownerProfile.wallet_address}`,
+        title: 'Success',
+        description: `Tokens assigned successfully to ${sellerAddress}`,
       });
       
-      // Update project status to approved in database
+      // Update the project status in Supabase after blockchain success
       await handleVerification(projectId, 'verify');
       
     } catch (error: any) {
-      console.error('Credit assignment failed:', error);
+      console.error('Blockchain verification failed:', error);
       toast({
-        title: 'Assignment Failed',
-        description: error.message || 'Failed to assign credits on blockchain',
+        title: 'Blockchain Error',
+        description: error.message || 'Failed to assign tokens on blockchain',
         variant: 'destructive'
       });
     } finally {
@@ -125,11 +108,6 @@ const Verification = () => {
 
   const handleVerification = async (projectId: string, action: 'verify' | 'reject') => {
     if (!profile) return;
-
-    // Set loading state for reject action
-    if (action === 'reject') {
-      setRejectLoading(prev => ({ ...prev, [projectId]: true }));
-    }
 
     try {
       const updates: any = {
@@ -163,21 +141,18 @@ const Verification = () => {
             console.error('Error creating carbon credits:', creditError);
           }
         }
-        
+      }
+
+      if (action === 'reject') {
         toast({
           title: 'Success',
-          description: 'Project verified and credits assigned successfully',
-        });
-      } else {
-        // Immediately remove rejected project from state
-        setProjects(prev => prev.filter(p => p.id !== projectId));
-        
-        toast({
-          title: 'Success',
-          description: 'Project rejected and removed from pending list',
+          description: 'Project rejected successfully',
         });
       }
 
+      // Refresh the list
+      fetchPendingProjects();
+      
       // Clear notes
       setVerificationNotes(prev => {
         const newNotes = { ...prev };
@@ -185,21 +160,12 @@ const Verification = () => {
         return newNotes;
       });
 
-      // Refresh the list to ensure consistency
-      if (action === 'verify') {
-        fetchPendingProjects();
-      }
-
     } catch (error: any) {
       toast({
         title: 'Error',
         description: error.message || `Failed to ${action} project`,
         variant: 'destructive'
       });
-    } finally {
-      if (action === 'reject') {
-        setRejectLoading(prev => ({ ...prev, [projectId]: false }));
-      }
     }
   };
 
@@ -347,20 +313,42 @@ const Verification = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
+                  {/* {project.status === 'pending' && (
+                    // <Button
+                    //   variant="outline"
+                    //   onClick={() => updateToReview(project.id)}
+                    //   className="flex items-center"
+                    // >
+                    //   <Clock className="w-4 h-4 mr-2" />
+                    //   Start Review
+                    // </Button>
+                  )} */}
+                  
                   <Button
-                    onClick={() => handleGiveCredit(project.id)}
+                    onClick={async () => {
+                      try {
+                        const walletAddress = await getWalletAddress();
+                        await handleBlockchainVerification(project.id, walletAddress, project.estimated_credits);
+                      } catch (error: any) {
+                        toast({
+                          title: 'Error',
+                          description: error.message || 'Failed to connect wallet',
+                          variant: 'destructive'
+                        });
+                      }
+                    }}
                     disabled={blockchainLoading[project.id]}
                     className="flex items-center bg-green-600 hover:bg-green-700 disabled:opacity-50"
                   >
                     {blockchainLoading[project.id] ? (
                       <>
                         <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        Assigning Credits...
+                        Verifying on Blockchain...
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Give Credit (10 tCO2e)
+                        <Wallet className="w-4 h-4 mr-2" />
+                        Verify & Assign Tokens
                       </>
                     )}
                   </Button>
@@ -368,20 +356,10 @@ const Verification = () => {
                   <Button
                     variant="destructive"
                     onClick={() => handleVerification(project.id, 'reject')}
-                    disabled={rejectLoading[project.id]}
                     className="flex items-center"
                   >
-                    {rejectLoading[project.id] ? (
-                      <>
-                        <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        Rejecting...
-                      </>
-                    ) : (
-                      <>
-                        <X className="w-4 h-4 mr-2" />
-                        Reject
-                      </>
-                    )}
+                    <X className="w-4 h-4 mr-2" />
+                    Reject Project
                   </Button>
                 </div>
               </CardContent>

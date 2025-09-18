@@ -72,61 +72,26 @@ const Marketplace = () => {
 
   const fetchMarketplaceData = async () => {
     try {
-      // Fetch verified projects with credits from blockchain
-      const { data: verifiedProjects, error: projectsError } = await supabase
-        .from('projects')
+      // Fetch active marketplace listings
+      const { data: listingsData, error: listingsError } = await supabase
+        .from('marketplace_listings')
         .select(`
           *,
-          profiles!projects_owner_id_fkey (
+          projects (
+            title,
+            location,
+            area_hectares
+          ),
+          profiles!marketplace_listings_seller_id_fkey (
             full_name,
-            organization,
-            wallet_address
+            organization
           )
         `)
-        .eq('status', 'verified')
+        .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (projectsError) throw projectsError;
-      
-      // Check blockchain for each project owner's credits
-      const marketplaceListings: MarketplaceListing[] = [];
-      
-      if (verifiedProjects) {
-        for (const project of verifiedProjects) {
-          if (project.profiles?.wallet_address) {
-            try {
-              const contract = await getContractReadOnly();
-              const sellerData = await contract.sellers(project.profiles.wallet_address);
-              const forSaleCredits = Number(sellerData[2]); // forSale amount
-              
-              // Only show if NGO has credits for sale
-              if (forSaleCredits > 0) {
-                marketplaceListings.push({
-                  id: project.id,
-                  price_per_credit: 25, // Default price, could be stored in profile
-                  credits_amount: forSaleCredits,
-                  status: 'active',
-                  created_at: project.created_at,
-                  project_id: project.id,
-                  projects: {
-                    title: project.title,
-                    location: project.location,
-                    area_hectares: project.area_hectares
-                  },
-                  profiles: {
-                    full_name: project.profiles.full_name,
-                    organization: project.profiles.organization
-                  }
-                });
-              }
-            } catch (error) {
-              console.error(`Error fetching blockchain data for project ${project.id}:`, error);
-            }
-          }
-        }
-      }
-      
-      setListings(marketplaceListings);
+      if (listingsError) throw listingsError;
+      setListings(listingsData || []);
 
       // Fetch user's available credits for selling
       if (profile) {
@@ -215,8 +180,8 @@ const Marketplace = () => {
       const contract = await getContract();
       const totalCost = creditsAmount * pricePerCredit;
       
-      // Convert to wei (price is in USD, but paying in ETH for demo)
-      const costInWei = ethers.parseEther((totalCost / 1000).toString()); // Convert USD to rough ETH equivalent
+      // Convert to wei (assuming price is in ETH)
+      const costInWei = ethers.parseEther(totalCost.toString());
       
       const tx = await contract.buy(sellerAddress, creditsAmount, { value: costInWei });
       
@@ -229,7 +194,7 @@ const Marketplace = () => {
       
       toast({
         title: 'Purchase Successful',
-        description: `Successfully purchased ${creditsAmount} credits for $${totalCost}`,
+        description: `Successfully purchased ${creditsAmount} credits for ${totalCost} ETH`,
       });
       
       // Refresh data
@@ -478,37 +443,27 @@ const Marketplace = () => {
                      </span>
                    </div>
                    
-                     <Button 
-                       className="w-full" 
-                       onClick={async () => {
-                         try {
-                           // Get the seller's wallet address from their profile
-                           const { data: sellerProfile } = await supabase
-                             .from('profiles')
-                             .select('wallet_address')
-                             .eq('full_name', listing.profiles.full_name)
-                             .single();
-                           
-                           if (!sellerProfile?.wallet_address) {
-                             throw new Error('Seller wallet address not found');
-                           }
-                           
-                           await purchaseCredits(
-                             listing.id, 
-                             listing.credits_amount, 
-                             listing.price_per_credit,
-                             sellerProfile.wallet_address
-                           );
-                         } catch (error: any) {
-                           toast({
-                             title: 'Error',
-                             description: error.message || 'Failed to initiate purchase',
-                             variant: 'destructive'
-                           });
-                         }
-                       }}
-                       disabled={purchasing[listing.id]}
-                     >
+                    <Button 
+                      className="w-full" 
+                      onClick={async () => {
+                        try {
+                          const sellerWallet = await getWalletAddress(); // In real app, this would be the actual seller's address
+                          await purchaseCredits(
+                            listing.id, 
+                            listing.credits_amount, 
+                            listing.price_per_credit,
+                            sellerWallet
+                          );
+                        } catch (error: any) {
+                          toast({
+                            title: 'Error',
+                            description: error.message || 'Failed to initiate purchase',
+                            variant: 'destructive'
+                          });
+                        }
+                      }}
+                      disabled={purchasing[listing.id]}
+                    >
                       {purchasing[listing.id] ? (
                         <>
                           <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />

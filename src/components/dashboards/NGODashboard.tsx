@@ -5,9 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, TrendingUp, Award, Plus, Wallet } from 'lucide-react';
+import { FileText, TrendingUp, Award, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getSellerData, getWalletAddress } from '@/contracts/contract';
 
 interface Project {
   id: string;
@@ -31,26 +30,13 @@ const NGODashboard = () => {
     totalCredits: 0,
     pendingCredits: 0
   });
-  const [blockchainCredits, setBlockchainCredits] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (profile) {
       fetchNGOData();
-      fetchBlockchainCredits();
     }
   }, [profile]);
-
-  const fetchBlockchainCredits = async () => {
-    try {
-      if (profile?.wallet_address) {
-        const sellerData = await getSellerData(profile.wallet_address);
-        setBlockchainCredits(Number(sellerData[1])); // credits amount
-      }
-    } catch (error) {
-      console.error('Error fetching blockchain credits:', error);
-    }
-  };
 
   const fetchNGOData = async () => {
     if (!profile) return;
@@ -172,17 +158,6 @@ const NGODashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Blockchain Credits</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{blockchainCredits}</div>
-            <p className="text-xs text-muted-foreground">Assigned credits</p>
-          </CardContent>
-        </Card>
-
         {/* <Card className="cursor-pointer hover:shadow-lg transition-all duration-200" onClick={() => navigate('/carbon-tracker')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('dashboard.totalCredits')}</CardTitle>
@@ -287,13 +262,8 @@ const NGODashboard = () => {
                   <div className="text-right">
                     {getStatusBadge(project.status)}
                     <p className="text-sm text-muted-foreground mt-1">
-                      {project.status === 'verified' ? 'Approved' : `${project.estimated_credits} estimated credits`}
+                      {project.estimated_credits} credits
                     </p>
-                    {project.status === 'verified' && (
-                      <p className="text-xs text-green-600 font-semibold">
-                        Credits assigned to wallet
-                      </p>
-                    )}
                   </div>
                 </div>
               ))}
