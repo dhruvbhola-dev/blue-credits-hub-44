@@ -6,34 +6,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, TrendingUp, ShoppingCart, Clock, CheckCircle, Users } from 'lucide-react';
+import { Building2, TrendingUp, ShoppingCart, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getBuyerCredits, getWalletAddress } from '@/contracts/contract';
-
-interface PurchaseRequest {
-  id: string;
-  project_id: string;
-  amount: number;
-  total_cost: number;
-  status: string;
-  created_at: string;
-  seller_id: string;
-  projects?: {
-    title: string;
-    location: string;
-  };
-}
 
 const CompanyDashboard = () => {
   const { profile } = useAuth();
   const { t } = useI18n();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
   const [stats, setStats] = useState({
     totalCredits: 0,
-    pendingRequests: 0,
-    approvedRequests: 0,
+    availableProjects: 0,
     totalSpent: 0
   });
   const [loading, setLoading] = useState(true);
@@ -57,32 +41,18 @@ const CompanyDashboard = () => {
         console.log('Could not fetch blockchain data:', error);
       }
 
-      // Fetch company's purchase requests
-      const { data: requestsData } = await supabase
-        .from('purchase_requests')
-        .select(`
-          *,
-          projects (
-            title,
-            location
-          )
-        `)
-        .eq('buyer_id', profile.id)
-        .order('created_at', { ascending: false });
+      // Fetch available projects in marketplace
+      const { data: marketplaceData } = await supabase
+        .from('marketplace_listings')
+        .select('credits_amount')
+        .eq('status', 'active');
 
-      const pendingRequests = requestsData?.filter(r => r.status === 'pending').length || 0;
-      const approvedRequests = requestsData?.filter(r => r.status === 'approved').length || 0;
-      const totalSpent = requestsData?.filter(r => r.status === 'approved').reduce((sum, r) => sum + Number(r.total_cost), 0) || 0;
-
-      if (requestsData) {
-        setPurchaseRequests(requestsData);
-      }
+      const availableProjects = marketplaceData?.length || 0;
 
       setStats({
         totalCredits: Number(blockchainCredits),
-        pendingRequests,
-        approvedRequests,
-        totalSpent
+        availableProjects,
+        totalSpent: 0 // This would come from actual purchase history
       });
     } catch (error) {
       console.error('Error fetching company data:', error);
@@ -91,25 +61,11 @@ const CompanyDashboard = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800'
-    };
-
-    return (
-      <Badge variant="outline" className={colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>
-        {status.toUpperCase()}
-      </Badge>
-    );
-  };
-
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="pb-2">
                 <div className="h-4 bg-muted rounded w-3/4"></div>
@@ -140,7 +96,7 @@ const CompanyDashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Credits Owned</CardTitle>
@@ -154,34 +110,23 @@ const CompanyDashboard = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.pendingRequests}</div>
-            <p className="text-xs text-muted-foreground">Awaiting NGO approval</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approved Purchases</CardTitle>
+            <CardTitle className="text-sm font-medium">Available Projects</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.approvedRequests}</div>
-            <p className="text-xs text-muted-foreground">Successful transactions</p>
+            <div className="text-2xl font-bold text-blue-600">{stats.availableProjects}</div>
+            <p className="text-xs text-muted-foreground">In marketplace</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Investment</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalSpent.toFixed(6)} ETH</div>
-            <p className="text-xs text-muted-foreground">Total investment</p>
+            <p className="text-xs text-muted-foreground">Total spent on credits</p>
           </CardContent>
         </Card>
       </div>
@@ -197,7 +142,7 @@ const CompanyDashboard = () => {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Explore verified carbon credit projects from NGOs and request credits.
+              Explore verified carbon credit projects from NGOs and purchase credits directly.
             </p>
           </CardContent>
         </Card>
@@ -217,49 +162,24 @@ const CompanyDashboard = () => {
         </Card>
       </div>
 
-      {/* Purchase Requests */}
+      {/* Marketplace Preview */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Purchase Requests</CardTitle>
+          <CardTitle>Marketplace Preview</CardTitle>
           <CardDescription>
-            Track the status of your carbon credit purchase requests
+            Available carbon credit projects ready for purchase
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {purchaseRequests.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold mb-2">No Requests Yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Start by browsing the marketplace and requesting credits from NGOs.
-              </p>
-              <Button onClick={() => navigate('/marketplace')}>
-                Browse Marketplace
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {purchaseRequests.map((request) => (
-                <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors duration-200">
-                  <div>
-                    <h4 className="font-semibold">{request.projects?.title || 'Unknown Project'}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {request.projects?.location} • {request.amount} credits • {request.total_cost.toFixed(6)} ETH
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Requested: {new Date(request.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {getStatusBadge(request.status)}
-                    <p className="text-sm text-muted-foreground mt-1">
-                      From: {request.seller_id}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="text-center py-8">
+            <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground mb-4">
+              Visit the marketplace to see verified projects and purchase carbon credits directly from NGOs.
+            </p>
+            <Button onClick={() => navigate('/marketplace')}>
+              View All Available Projects
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

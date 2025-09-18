@@ -118,45 +118,6 @@ const Marketplace = () => {
     }
   };
 
-  const handleRequestCredits = async (sellerAddress: string, amount: number) => {
-    setBuyingLoading(prev => ({ ...prev, [sellerAddress]: true }));
-    
-    try {
-      // Create a purchase request in the database
-      const seller = sellers.find(s => s.address === sellerAddress);
-      
-      const { error } = await supabase
-        .from('purchase_requests')
-        .insert({
-          project_id: seller?.project?.id,
-          buyer_id: profile?.id,
-          seller_id: seller?.profile?.full_name, // Using name as identifier for now
-          amount: amount,
-          total_cost: amount * (seller?.price_per_credit || 0.001),
-          status: 'pending'
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Request Sent',
-        description: `Credit request sent to ${seller?.profile?.full_name}. Awaiting approval.`,
-      });
-      
-      setBuyAmounts(prev => ({ ...prev, [sellerAddress]: '' }));
-      
-    } catch (error: any) {
-      console.error('Request credits failed:', error);
-      toast({
-        title: 'Request Failed',
-        description: error.message || 'Failed to send credit request',
-        variant: 'destructive'
-      });
-    } finally {
-      setBuyingLoading(prev => ({ ...prev, [sellerAddress]: false }));
-    }
-  };
-
   const handleBuyCredits = async (sellerAddress: string, amount: number) => {
     setBuyingLoading(prev => ({ ...prev, [sellerAddress]: true }));
     
@@ -326,7 +287,7 @@ const Marketplace = () => {
                 <div className="flex items-center space-x-4 pt-4 border-t">
                   <Input
                     type="number"
-                    placeholder="Amount to request"
+                    placeholder="Amount to buy"
                     min="1"
                     max={seller.forSale}
                     value={buyAmounts[seller.address] || ''}
@@ -341,28 +302,28 @@ const Marketplace = () => {
                     onClick={() => {
                       const amount = parseInt(buyAmounts[seller.address] || '0');
                       if (amount > 0 && amount <= seller.forSale) {
-                        handleRequestCredits(seller.address, amount);
+                        handleBuyCredits(seller.address, amount);
                       } else {
                         toast({
                           title: 'Invalid Amount',
-                          description: 'Please enter a valid amount to request',
+                          description: 'Please enter a valid amount to purchase',
                           variant: 'destructive'
                         });
                       }
                     }}
                     disabled={buyingLoading[seller.address] || !buyAmounts[seller.address]}
-                    className="flex items-center bg-blue-600 hover:bg-blue-700"
+                    className="flex items-center bg-primary hover:bg-primary/90"
                     size="lg"
                   >
                     {buyingLoading[seller.address] ? (
                       <>
                         <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        Requesting...
+                        Purchasing...
                       </>
                     ) : (
                       <>
-                        <Users className="w-4 h-4 mr-2" />
-                        Request Credits from NGO
+                        <Wallet className="w-4 h-4 mr-2" />
+                        Buy Credits Now
                       </>
                     )}
                   </Button>

@@ -305,6 +305,42 @@ export type Database = {
           },
         ]
       }
+      purchase_requests: {
+        Row: {
+          amount: number
+          buyer_id: string
+          created_at: string
+          id: string
+          project_id: string
+          seller_id: string
+          status: string
+          total_cost: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          created_at?: string
+          id?: string
+          project_id: string
+          seller_id: string
+          status?: string
+          total_cost: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          seller_id?: string
+          status?: string
+          total_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
