@@ -289,7 +289,7 @@ const Verification = () => {
                   </div>
                   <div>
                     <p><strong>Area:</strong> {project.area_hectares} hectares</p>
-                    <p><strong>Estimated Credits:</strong> {project.estimated_credits} tCO2e</p>
+                    {/* <p><strong>Estimated Credits:</strong> {project.estimated_credits} tCO2e</p> */}
                   </div>
                 </div>
 
@@ -313,16 +313,16 @@ const Verification = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
-                  {project.status === 'pending' && (
-                    <Button
-                      variant="outline"
-                      onClick={() => updateToReview(project.id)}
-                      className="flex items-center"
-                    >
-                      <Clock className="w-4 h-4 mr-2" />
-                      Start Review
-                    </Button>
-                  )}
+                  {/* {project.status === 'pending' && (
+                    // <Button
+                    //   variant="outline"
+                    //   onClick={() => updateToReview(project.id)}
+                    //   className="flex items-center"
+                    // >
+                    //   <Clock className="w-4 h-4 mr-2" />
+                    //   Start Review
+                    // </Button>
+                  )} */}
                   
                   <Button
                     onClick={async () => {

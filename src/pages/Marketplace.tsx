@@ -271,7 +271,7 @@ const Marketplace = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        {/* <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-green-600">
               {blockchainData.buyerCredits || '0'}
@@ -287,9 +287,9 @@ const Marketplace = () => {
              </div>
              <p className="text-xs text-muted-foreground">Credits Available</p>
            </CardContent>
-         </Card>
+         </Card> */}
         
-        <Card>
+        {/* <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
               $
@@ -310,7 +310,7 @@ const Marketplace = () => {
              </div>
              <p className="text-xs text-muted-foreground">Total Market Value</p>
            </CardContent>
-         </Card>
+         </Card> */}
       </div>
 
       {/* Create Listing Form */}
