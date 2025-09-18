@@ -9,6 +9,7 @@ interface Profile {
   organization?: string;
   phone?: string;
   address?: string;
+  wallet_address?: string;
 }
 
 interface AuthContextType {
