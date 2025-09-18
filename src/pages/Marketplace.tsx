@@ -43,66 +43,69 @@ const Marketplace = () => {
 
   const fetchSellers = async () => {
     try {
-      // Get verified projects with credits from marketplace listings
-      const { data: listings, error } = await supabase
-        .from('marketplace_listings')
+      // Get all profiles with wallet addresses that could have credits
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
         .select(`
-          *,
-          projects!marketplace_listings_project_id_fkey (
+          id,
+          full_name,
+          organization,
+          wallet_address,
+          projects!projects_owner_id_fkey (
+            id,
             title,
             location,
-            estimated_credits
+            status
           ),
-          profiles!marketplace_listings_seller_id_fkey (
-            full_name,
-            organization,
-            wallet_address
-          ),
-          certificates!certificates_project_id_fkey (
+          certificates!certificates_generated_by_fkey (
             id,
-            certificate_url
+            certificate_url,
+            project_id
           )
         `)
-        .eq('status', 'active')
-        .gt('credits_amount', 0);
+        .not('wallet_address', 'is', null);
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
 
       const sellersData: Seller[] = [];
 
-      for (const listing of listings || []) {
-        // Try to get blockchain data if wallet address exists
-        let blockchainCredits = 0;
-        let blockchainForSale = 0;
-        
-        if (listing.profiles?.wallet_address) {
-          try {
-            const contract = await getContractReadOnly();
-            const sellerInfo = await contract.sellers(listing.profiles.wallet_address);
-            blockchainCredits = Number(sellerInfo.credits);
-            blockchainForSale = Number(sellerInfo.forSale);
-          } catch (error) {
-            // Use database data if blockchain fails
-            console.log('Using database fallback for seller:', listing.profiles?.full_name);
-          }
-        }
+      // Check blockchain state for each profile with a wallet address
+      for (const profile of profiles || []) {
+        if (!profile.wallet_address) continue;
 
-        sellersData.push({
-          address: listing.profiles?.wallet_address || `DB-${listing.seller_id}`,
-          credits: blockchainCredits || listing.credits_amount,
-          forSale: blockchainForSale || listing.credits_amount,
-          profile: {
-            full_name: listing.profiles?.full_name || 'Unknown',
-            organization: listing.profiles?.organization
-          },
-          project: {
-            id: listing.project_id,
-            title: listing.projects?.title,
-            location: listing.projects?.location
-          },
-          certificate: (listing.certificates as any)?.[0] || null,
-          price_per_credit: Number(listing.price_per_credit)
-        });
+        try {
+          const contract = await getContractReadOnly();
+          const sellerInfo = await contract.sellers(profile.wallet_address);
+          const blockchainCredits = Number(sellerInfo.credits);
+          const blockchainForSale = Number(sellerInfo.forSale);
+
+          // Only include sellers who have credits for sale on blockchain
+          if (blockchainForSale > 0) {
+            // Find a verified project for this seller
+            const verifiedProject = profile.projects?.find(p => p.status === 'verified');
+            const certificate = profile.certificates?.find(c => c.project_id === verifiedProject?.id);
+
+            sellersData.push({
+              address: profile.wallet_address,
+              credits: blockchainCredits,
+              forSale: blockchainForSale,
+              profile: {
+                full_name: profile.full_name,
+                organization: profile.organization
+              },
+              project: verifiedProject ? {
+                id: verifiedProject.id,
+                title: verifiedProject.title,
+                location: verifiedProject.location
+              } : undefined,
+              certificate: certificate || null,
+              price_per_credit: 0.001 // Default price, could be made configurable
+            });
+          }
+        } catch (error) {
+          console.error(`Failed to get blockchain data for ${profile.full_name}:`, error);
+          // Skip this seller if blockchain data can't be fetched
+        }
       }
 
       setSellers(sellersData);
@@ -110,7 +113,7 @@ const Marketplace = () => {
       console.error('Error fetching sellers:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load marketplace data',
+        description: 'Failed to load marketplace data from blockchain',
         variant: 'destructive'
       });
     } finally {

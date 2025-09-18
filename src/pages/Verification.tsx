@@ -422,6 +422,9 @@ const Verification = () => {
                       }
 
                       try {
+                        // First, ensure verifier has wallet connected
+                        const verifierAddress = await getWalletAddress();
+                        
                         // Get project owner's wallet address from profiles
                         const { data: ownerProfile } = await supabase
                           .from('profiles')
@@ -429,20 +432,24 @@ const Verification = () => {
                           .eq('id', project.owner_id)
                           .single();
 
-                        if (!ownerProfile?.wallet_address) {
+                        let ownerWalletAddress = ownerProfile?.wallet_address;
+
+                        // If owner doesn't have wallet address in DB, try to get it and update
+                        if (!ownerWalletAddress) {
                           toast({
                             title: 'Error',
-                            description: 'Project owner must connect their wallet first',
+                            description: 'Project owner must connect their wallet and have it saved. Please ask them to visit their dashboard.',
                             variant: 'destructive'
                           });
                           return;
                         }
 
-                        await handleBlockchainVerification(project.id, ownerProfile.wallet_address, creditsToAssign);
+                        await handleBlockchainVerification(project.id, ownerWalletAddress, creditsToAssign);
                       } catch (error: any) {
+                        console.error('Wallet connection error:', error);
                         toast({
-                          title: 'Error',
-                          description: error.message || 'Failed to assign tokens. Please ensure MetaMask is connected.',
+                          title: 'Wallet Connection Error',
+                          description: 'Please ensure MetaMask is connected and on Sepolia network',
                           variant: 'destructive'
                         });
                       }
