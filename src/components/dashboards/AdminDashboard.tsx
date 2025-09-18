@@ -141,8 +141,8 @@ const AdminDashboard = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-primary">Admin Dashboard</h2>
-        <p className="text-muted-foreground">Manage users, projects, and carbon credits</p>
+        <h2 className="text-2xl font-bold text-primary">Company Dashboard</h2>
+        <p className="text-muted-foreground">users, projects, and carbon credits</p>
       </div>
 
       {/* Stats Cards */}
@@ -193,7 +193,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Issue Credits Form */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Issue Carbon Credits</CardTitle>
           <CardDescription>
@@ -249,10 +249,10 @@ const AdminDashboard = () => {
             </div>
           </form>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* User Management */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>User Management</CardTitle>
           <CardDescription>
@@ -277,7 +277,7 @@ const AdminDashboard = () => {
             ))}
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 };

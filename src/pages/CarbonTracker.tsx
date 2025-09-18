@@ -88,7 +88,7 @@ const CarbonTracker = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
+        {/* <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
               <Leaf className="h-8 w-8 text-green-600" />
@@ -100,21 +100,21 @@ const CarbonTracker = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
         
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
               <Wallet className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Blockchain Credits</p>
+                <p className="text-sm font-medium text-muted-foreground">Credits</p>
                 <p className="text-2xl font-bold text-blue-600">{blockchainBalance.sellerCredits}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        {/* <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
               <Award className="h-8 w-8 text-purple-600" />
@@ -124,7 +124,7 @@ const CarbonTracker = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
         
         <Card>
           <CardContent className="pt-6">

@@ -158,7 +158,7 @@ const NGODashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-all duration-200" onClick={() => navigate('/carbon-tracker')}>
+        {/* <Card className="cursor-pointer hover:shadow-lg transition-all duration-200" onClick={() => navigate('/carbon-tracker')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('dashboard.totalCredits')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -167,9 +167,9 @@ const NGODashboard = () => {
             <div className="text-2xl font-bold">{stats.totalCredits.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Click to view tracker</p>
           </CardContent>
-        </Card>
+        </Card> */}
 
-        <Card>
+        {/* <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('dashboard.pendingVerification')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -178,11 +178,7 @@ const NGODashboard = () => {
             <div className="text-2xl font-bold text-yellow-600">{stats.pendingCredits.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Awaiting verification</p>
           </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        </Card> */}
         <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 border-l-4 border-l-primary" onClick={() => navigate('/reporting')}>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -196,8 +192,12 @@ const NGODashboard = () => {
             </p>
           </CardContent>
         </Card>
+      </div>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 border-l-4 border-l-green-secondary" onClick={() => navigate('/carbon-tracker')}>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        {/* <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 border-l-4 border-l-green-secondary" onClick={() => navigate('/carbon-tracker')}>
           <CardHeader>
             <CardTitle className="flex items-center">
               <TrendingUp className="w-5 h-5 mr-2" />
@@ -223,7 +223,7 @@ const NGODashboard = () => {
               View and download certificates for your verified projects.
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Recent Projects */}

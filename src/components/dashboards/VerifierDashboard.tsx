@@ -212,7 +212,7 @@ const VerifierDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        {/* <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Rejected</CardTitle>
             <XCircle className="h-4 w-4 text-muted-foreground" />
@@ -220,9 +220,9 @@ const VerifierDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{stats.rejectedProjects}</div>
           </CardContent>
-        </Card>
+        </Card> */}
 
-        <Card>
+        {/* <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Reviewed</CardTitle>
             <Award className="h-4 w-4 text-muted-foreground" />
@@ -230,7 +230,7 @@ const VerifierDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalReviewed}</div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       <Card>
