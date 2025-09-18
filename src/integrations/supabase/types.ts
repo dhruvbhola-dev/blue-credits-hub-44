@@ -166,7 +166,6 @@ export type Database = {
           role: string
           updated_at: string
           user_id: string
-          wallet_address: string | null
         }
         Insert: {
           address?: string | null
@@ -178,7 +177,6 @@ export type Database = {
           role: string
           updated_at?: string
           user_id: string
-          wallet_address?: string | null
         }
         Update: {
           address?: string | null
@@ -190,7 +188,6 @@ export type Database = {
           role?: string
           updated_at?: string
           user_id?: string
-          wallet_address?: string | null
         }
         Relationships: []
       }
@@ -250,7 +247,6 @@ export type Database = {
           status: string
           title: string
           updated_at: string
-          verification_notes: string | null
           verified_at: string | null
           verifier_id: string | null
         }
@@ -267,7 +263,6 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
-          verification_notes?: string | null
           verified_at?: string | null
           verifier_id?: string | null
         }
@@ -284,7 +279,6 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
-          verification_notes?: string | null
           verified_at?: string | null
           verifier_id?: string | null
         }
@@ -304,42 +298,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      purchase_requests: {
-        Row: {
-          amount: number
-          buyer_id: string
-          created_at: string
-          id: string
-          project_id: string
-          seller_id: string
-          status: string
-          total_cost: number
-          updated_at: string
-        }
-        Insert: {
-          amount: number
-          buyer_id: string
-          created_at?: string
-          id?: string
-          project_id: string
-          seller_id: string
-          status?: string
-          total_cost: number
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          buyer_id?: string
-          created_at?: string
-          id?: string
-          project_id?: string
-          seller_id?: string
-          status?: string
-          total_cost?: number
-          updated_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {

@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useWallet } from '@/contexts/WalletContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, X, Clock, FileText, MapPin, Calendar, Wallet, Award, AlertCircle } from 'lucide-react';
+import { CheckCircle, X, Clock, FileText, MapPin, Calendar, Wallet } from 'lucide-react';
 import { getContract, getWalletAddress, getSellerData } from '@/contracts/contract';
 import BlockchainWallet from '@/components/BlockchainWallet';
 import CertificateGenerator from '@/components/Certificate/CertificateGenerator';
@@ -32,17 +30,13 @@ interface Project {
 
 const Verification = () => {
   const { profile } = useAuth();
-  const { walletAddress, isConnected, connectWallet } = useWallet();
   const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
   const [blockchainLoading, setBlockchainLoading] = useState<{[key: string]: boolean}>({});
-  const [backupLoading, setBackupLoading] = useState<{[key: string]: boolean}>({});
   const [pendingAddresses, setPendingAddresses] = useState<string[]>([]);
   const [showCertificate, setShowCertificate] = useState<{[key: string]: boolean}>({});
-  const [creditInputs, setCreditInputs] = useState<{[key: string]: string}>({});
-  const [showBackupButton, setShowBackupButton] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     if (profile?.role === 'verifier') {
@@ -94,128 +88,21 @@ const Verification = () => {
       
       toast({
         title: 'Success',
-        description: `${amount} credits assigned successfully to NGO`,
+        description: `Tokens assigned successfully to ${sellerAddress}`,
       });
       
-      // Update the project status and assign credits in Supabase after blockchain success
-      await supabase
-        .from('projects')
-        .update({ 
-          status: 'verified',
-          verifier_id: profile?.id,
-          verified_at: new Date().toISOString(),
-          verification_notes: verificationNotes[projectId] || null
-        })
-        .eq('id', projectId);
-
-      // Create carbon credits record for the NGO
-      await supabase
-        .from('carbon_credits')
-        .insert({
-          project_id: projectId,
-          owner_id: projects.find(p => p.id === projectId)?.owner_id,
-          credits_amount: amount,
-          status: 'active',
-          for_sale: amount // Make all credits available for sale by default
-        });
-
-      // Create marketplace listing
-      await supabase
-        .from('marketplace_listings')
-        .insert({
-          project_id: projectId,
-          seller_id: projects.find(p => p.id === projectId)?.owner_id,
-          credits_amount: amount,
-          price_per_credit: 0.001, // Default price per credit
-          status: 'active'
-        });
-      
-      // Refresh projects list
-      fetchPendingProjects();
-      setCreditInputs(prev => ({ ...prev, [projectId]: '' }));
+      // Update the project status in Supabase after blockchain success
+      await handleVerification(projectId, 'verify');
       
     } catch (error: any) {
       console.error('Blockchain verification failed:', error);
-      setShowBackupButton(prev => ({ ...prev, [projectId]: true }));
       toast({
         title: 'Blockchain Error',
-        description: 'Transaction failed. Use "Issue Credits with Certificate" as backup.',
+        description: error.message || 'Failed to assign tokens on blockchain',
         variant: 'destructive'
       });
     } finally {
       setBlockchainLoading(prev => ({ ...prev, [projectId]: false }));
-    }
-  };
-
-  const handleBackupCreditsWithCertificate = async (projectId: string, amount: number) => {
-    setBackupLoading(prev => ({ ...prev, [projectId]: true }));
-    
-    try {
-      // Update project status as verified
-      await supabase
-        .from('projects')
-        .update({ 
-          status: 'verified',
-          verifier_id: profile?.id,
-          verified_at: new Date().toISOString(),
-          verification_notes: verificationNotes[projectId] || null
-        })
-        .eq('id', projectId);
-
-      // Create carbon credits record
-      await supabase
-        .from('carbon_credits')
-        .insert({
-          project_id: projectId,
-          owner_id: projects.find(p => p.id === projectId)?.owner_id,
-          credits_amount: amount,
-          status: 'active',
-          for_sale: amount
-        });
-
-      // Create marketplace listing
-      await supabase
-        .from('marketplace_listings')
-        .insert({
-          project_id: projectId,
-          seller_id: projects.find(p => p.id === projectId)?.owner_id,
-          credits_amount: amount,
-          price_per_credit: 0.001,
-          status: 'active'
-        });
-
-      // Generate certificate
-      await supabase
-        .from('certificates')
-        .insert({
-          project_id: projectId,
-          generated_by: profile?.id,
-          certificate_data: {
-            credits: amount,
-            issued_via: 'backup_system',
-            issued_at: new Date().toISOString()
-          }
-        });
-      
-      toast({
-        title: 'Success',
-        description: `${amount} credits issued with certificate. Project is now in marketplace.`,
-      });
-      
-      // Refresh projects list
-      fetchPendingProjects();
-      setCreditInputs(prev => ({ ...prev, [projectId]: '' }));
-      setShowBackupButton(prev => ({ ...prev, [projectId]: false }));
-      
-    } catch (error: any) {
-      console.error('Backup credit issuance failed:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to issue credits with certificate',
-        variant: 'destructive'
-      });
-    } finally {
-      setBackupLoading(prev => ({ ...prev, [projectId]: false }));
     }
   };
 
@@ -227,7 +114,7 @@ const Verification = () => {
         status: action === 'verify' ? 'verified' : 'rejected',
         verifier_id: profile.id,
         verified_at: new Date().toISOString(),
-        verification_notes: verificationNotes[projectId] || null
+        verification_notes: verificationNotes[projectId] || ''
       };
 
       const { error } = await supabase
@@ -236,6 +123,25 @@ const Verification = () => {
         .eq('id', projectId);
 
       if (error) throw error;
+
+      // If verified, create carbon credits
+      if (action === 'verify') {
+        const project = projects.find(p => p.id === projectId);
+        if (project) {
+          const { error: creditError } = await supabase
+            .from('carbon_credits')
+            .insert({
+              project_id: projectId,
+              owner_id: project.owner_id,
+              credits_amount: project.estimated_credits,
+              status: 'active'
+            });
+
+          if (creditError) {
+            console.error('Error creating carbon credits:', creditError);
+          }
+        }
+      }
 
       if (action === 'reject') {
         toast({
@@ -335,27 +241,6 @@ const Verification = () => {
         </Badge>
       </div>
 
-      {/* Wallet Connection Status */}
-      {!isConnected && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-3">
-              <AlertCircle className="w-5 h-5 text-orange-600" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-orange-800">Wallet Connection Required</h3>
-                <p className="text-sm text-orange-700">
-                  Connect your MetaMask wallet to verify projects and assign credits
-                </p>
-              </div>
-              <Button onClick={connectWallet} variant="outline">
-                <Wallet className="w-4 h-4 mr-2" />
-                Connect Wallet
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {projects.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
@@ -414,126 +299,68 @@ const Verification = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <Label htmlFor={`credits-${project.id}`}>Credits to Assign to NGO</Label>
-                  <Input
-                    id={`credits-${project.id}`}
-                    type="number"
-                    placeholder={`Enter credits (Estimated: ${project.estimated_credits})`}
-                    value={creditInputs[project.id] || ''}
-                    onChange={(e) => setCreditInputs(prev => ({
+                  <Label htmlFor={`notes-${project.id}`}>Verification Notes</Label>
+                  <Textarea
+                    id={`notes-${project.id}`}
+                    placeholder="Add your verification notes, concerns, or recommendations..."
+                    value={verificationNotes[project.id] || ''}
+                    onChange={(e) => setVerificationNotes(prev => ({
                       ...prev,
                       [project.id]: e.target.value
                     }))}
-                    min="1"
-                    max="10000"
-                    className="text-lg font-semibold"
+                    rows={3}
                   />
                 </div>
 
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
+                  {project.status === 'pending' && (
+                    <Button
+                      variant="outline"
+                      onClick={() => updateToReview(project.id)}
+                      className="flex items-center"
+                    >
+                      <Clock className="w-4 h-4 mr-2" />
+                      Start Review
+                    </Button>
+                  )}
+                  
                   <Button
                     onClick={async () => {
-                      const creditsToAssign = parseInt(creditInputs[project.id] || '0');
-                      
-                      if (creditsToAssign <= 0) {
-                        toast({
-                          title: 'Error', 
-                          description: 'Please enter a valid number of credits to assign',
-                          variant: 'destructive'
-                        });
-                        return;
-                      }
-
                       try {
-                        // Check if verifier wallet is connected
-                        if (!isConnected || !walletAddress) {
-                          toast({
-                            title: 'Wallet Not Connected',
-                            description: 'Please connect your MetaMask wallet first',
-                            variant: 'destructive'
-                          });
-                          return;
-                        }
-                        
-                        // Get project owner's wallet address from profiles
-                        const { data: ownerProfile, error: profileError } = await supabase
-                          .from('profiles')
-                          .select('wallet_address, full_name')
-                          .eq('id', project.owner_id)
-                          .single();
-
-                        if (profileError) {
-                          toast({
-                            title: 'Error',
-                            description: 'Failed to fetch project owner profile',
-                            variant: 'destructive'
-                          });
-                          return;
-                        }
-
-                        const ownerWalletAddress = ownerProfile?.wallet_address;
-
-                        if (!ownerWalletAddress) {
-                          toast({
-                            title: 'Owner Wallet Not Connected',
-                            description: `${ownerProfile?.full_name || 'Project owner'} must connect their wallet first. Please ask them to visit their dashboard and connect MetaMask.`,
-                            variant: 'destructive'
-                          });
-                          return;
-                        }
-
-                        await handleBlockchainVerification(project.id, ownerWalletAddress, creditsToAssign);
+                        const walletAddress = await getWalletAddress();
+                        await handleBlockchainVerification(project.id, walletAddress, project.estimated_credits);
                       } catch (error: any) {
-                        console.error('Wallet connection error:', error);
                         toast({
-                          title: 'Wallet Connection Error',
-                          description: 'Please ensure MetaMask is connected and on Sepolia network',
+                          title: 'Error',
+                          description: error.message || 'Failed to connect wallet',
                           variant: 'destructive'
                         });
                       }
-                     }}
-                     disabled={blockchainLoading[project.id] || !creditInputs[project.id] || !isConnected}
-                     className="flex items-center bg-primary hover:bg-primary/90 text-white disabled:opacity-50"
-                     size="lg"
+                    }}
+                    disabled={blockchainLoading[project.id]}
+                    className="flex items-center bg-green-600 hover:bg-green-700 disabled:opacity-50"
                   >
                     {blockchainLoading[project.id] ? (
                       <>
                         <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        Sending Credits to NGO...
+                        Verifying on Blockchain...
                       </>
                     ) : (
                       <>
                         <Wallet className="w-4 h-4 mr-2" />
-                        Send Credits to NGO
+                        Verify & Assign Tokens
                       </>
                     )}
                   </Button>
-
-                  {showBackupButton[project.id] && (
-                    <Button
-                      onClick={() => {
-                        const creditsToAssign = parseInt(creditInputs[project.id] || '0');
-                        if (creditsToAssign > 0) {
-                          handleBackupCreditsWithCertificate(project.id, creditsToAssign);
-                        }
-                      }}
-                      disabled={backupLoading[project.id] || !creditInputs[project.id]}
-                      className="flex items-center bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
-                      size="lg"
-                    >
-                      {backupLoading[project.id] ? (
-                        <>
-                          <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                          Generating Certificate...
-                        </>
-                      ) : (
-                        <>
-                          <Award className="w-4 h-4 mr-2" />
-                          Generate Certificate
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleVerification(project.id, 'reject')}
+                    className="flex items-center"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Reject Project
+                  </Button>
                 </div>
               </CardContent>
             </Card>

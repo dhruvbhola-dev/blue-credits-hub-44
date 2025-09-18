@@ -87,14 +87,16 @@ const CarbonTracker = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
-              <Wallet className="h-8 w-8 text-primary" />
+              <Leaf className="h-8 w-8 text-green-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">My Credits</p>
-                <p className="text-2xl font-bold text-primary">{blockchainBalance.sellerCredits}</p>
+                <p className="text-sm font-medium text-muted-foreground">Database Credits</p>
+                <p className="text-2xl font-bold">
+                  {credits.reduce((sum, credit) => sum + credit.credits_amount, 0)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -103,10 +105,10 @@ const CarbonTracker = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
-              <Award className="h-8 w-8 text-secondary" />
+              <Wallet className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Purchased Credits</p>
-                <p className="text-2xl font-bold text-secondary">{blockchainBalance.ownedCredits}</p>
+                <p className="text-sm font-medium text-muted-foreground">Blockchain Credits</p>
+                <p className="text-2xl font-bold text-blue-600">{blockchainBalance.sellerCredits}</p>
               </div>
             </div>
           </CardContent>
@@ -115,7 +117,19 @@ const CarbonTracker = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-accent" />
+              <Award className="h-8 w-8 text-purple-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Owned Credits</p>
+                <p className="text-2xl font-bold text-purple-600">{blockchainBalance.ownedCredits}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <TrendingUp className="h-8 w-8 text-green-500" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Active Projects</p>
                 <p className="text-2xl font-bold">{credits.length}</p>

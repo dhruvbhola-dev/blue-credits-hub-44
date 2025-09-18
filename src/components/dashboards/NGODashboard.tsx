@@ -49,26 +49,13 @@ const NGODashboard = () => {
         .eq('owner_id', profile.id)
         .order('created_at', { ascending: false });
 
-      // Get blockchain credits for this NGO
-      let blockchainCredits = 0;
-      try {
-        const { getSellerData, getWalletAddress } = await import('@/contracts/contract');
-        const walletAddress = await getWalletAddress();
-        const sellerData = await getSellerData(walletAddress);
-        blockchainCredits = Number(sellerData[1]); // Credits from smart contract
-      } catch (error) {
-        console.log('Could not fetch blockchain data:', error);
-      }
-
-      // Fetch NGO's carbon credits from database
+      // Fetch NGO's carbon credits
       const { data: creditsData } = await supabase
         .from('carbon_credits')
         .select('credits_amount, status')
         .eq('owner_id', profile.id);
 
-      const dbCredits = creditsData?.reduce((sum, credit) => sum + Number(credit.credits_amount), 0) || 0;
-      const totalCredits = blockchainCredits + dbCredits; // Combine blockchain and database credits
-      
+      const totalCredits = creditsData?.reduce((sum, credit) => sum + Number(credit.credits_amount), 0) || 0;
       const verifiedProjects = projectsData?.filter(p => p.status === 'verified').length || 0;
       const pendingCredits = projectsData?.filter(p => p.status === 'pending').reduce((sum, p) => sum + Number(p.estimated_credits), 0) || 0;
 
@@ -194,34 +181,6 @@ const NGODashboard = () => {
         </Card>
       </div>
 
-      {/* Verification Status & Certificates */}
-      <Card className="border-l-4 border-l-green-500">
-        <CardHeader>
-          <CardTitle className="flex items-center text-green-700">
-            <Award className="w-5 h-5 mr-2" />
-            ✅ Verified by Verifier
-          </CardTitle>
-          <CardDescription>
-            Your projects have been successfully verified and credits assigned
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <p><strong>Credits Received:</strong> {stats.totalCredits} tCO₂e</p>
-              <p><strong>Verified Projects:</strong> {stats.verifiedProjects}</p>
-            </div>
-            <div>
-              <p><strong>Available for Sale:</strong> {stats.totalCredits} tCO₂e</p>
-              <p><strong>Status:</strong> <Badge variant="outline" className="bg-green-100 text-green-800">Active</Badge></p>
-            </div>
-          </div>
-          <Button className="mt-4" onClick={() => navigate('/marketplace')}>
-            View Marketplace Listing
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 border-l-4 border-l-primary" onClick={() => navigate('/reporting')}>
@@ -256,7 +215,7 @@ const NGODashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center">
               <Award className="w-5 h-5 mr-2" />
-              Certificates Issued
+              Certificates
             </CardTitle>
           </CardHeader>
           <CardContent>
