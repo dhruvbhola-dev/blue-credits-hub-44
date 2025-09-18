@@ -197,4 +197,20 @@ export const getWalletAddress = async (): Promise<string> => {
   return await signer.getAddress();
 };
 
+// Blockchain data fetchers
+export const getSellerData = async (address: string) => {
+  const contract = await getContractReadOnly();
+  return await contract.sellers(address);
+};
+
+export const getBuyerCredits = async (address: string) => {
+  const contract = await getContractReadOnly();
+  return await contract.buyers(address);
+};
+
+export const getVerifierAddress = async () => {
+  const contract = await getContractReadOnly();
+  return await contract.verifier();
+};
+
 export { CONTRACT_ADDRESS, CONTRACT_ABI };

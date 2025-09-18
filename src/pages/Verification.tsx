@@ -8,7 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { CheckCircle, X, Clock, FileText, MapPin, Calendar, Wallet } from 'lucide-react';
-import { getContract, getWalletAddress } from '@/contracts/contract';
+import { getContract, getWalletAddress, getSellerData } from '@/contracts/contract';
+import BlockchainWallet from '@/components/BlockchainWallet';
+import CertificateGenerator from '@/components/Certificate/CertificateGenerator';
 
 interface Project {
   id: string;
@@ -33,6 +35,8 @@ const Verification = () => {
   const [loading, setLoading] = useState(true);
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
   const [blockchainLoading, setBlockchainLoading] = useState<{[key: string]: boolean}>({});
+  const [pendingAddresses, setPendingAddresses] = useState<string[]>([]);
+  const [showCertificate, setShowCertificate] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     if (profile?.role === 'verifier') {

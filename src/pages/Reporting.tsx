@@ -10,10 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Camera, Upload, MapPin, Wallet } from 'lucide-react';
+import { MapPin, Wallet, FileText, CheckCircle, Clock } from 'lucide-react';
 import { locationOptions } from '@/utils/dummyData';
-import { getContract } from '@/contracts/contract';
-import BlockchainStats from '@/components/BlockchainStats';
+import { getContract, getWalletAddress, getSellerData } from '@/contracts/contract';
+import BlockchainWallet from '@/components/BlockchainWallet';
+import CarbonProjectMap from '@/components/Map/CarbonProjectMap';
 
 interface Project {
   id: string;
@@ -25,6 +26,10 @@ interface Project {
   status: string;
   created_at: string;
   owner_id: string;
+  gps_coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 const Reporting = () => {
@@ -35,6 +40,9 @@ const Reporting = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [submittingToBlockchain, setSubmittingToBlockchain] = useState(false);
+  const [blockchainSubmitted, setBlockchainSubmitted] = useState(false);
+  const [walletAddress, setWalletAddress] = useState('');
+  const [sellerData, setSellerData] = useState<any>(null);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -49,8 +57,27 @@ const Reporting = () => {
   useEffect(() => {
     if (profile) {
       fetchProjects();
+      fetchBlockchainStatus();
     }
   }, [profile]);
+
+  const fetchBlockchainStatus = async () => {
+    try {
+      const address = await getWalletAddress();
+      setWalletAddress(address);
+      
+      const seller = await getSellerData(address);
+      setSellerData({
+        hasSubmitted: seller[0],
+        credits: Number(seller[1]),
+        forSale: Number(seller[2])
+      });
+      
+      setBlockchainSubmitted(seller[0]);
+    } catch (error) {
+      console.error('Error fetching blockchain status:', error);
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -61,7 +88,10 @@ const Reporting = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProjects(data || []);
+      setProjects((data || []).map(project => ({
+        ...project,
+        gps_coordinates: project.gps_coordinates as any || { lat: 20.5937, lng: 78.9629 }
+      })));
     } catch (error) {
       console.error('Error fetching projects:', error);
     } finally {
@@ -70,6 +100,15 @@ const Reporting = () => {
   };
 
   const handleSubmitToBlockchain = async () => {
+    if (blockchainSubmitted) {
+      toast({
+        title: 'Already Submitted',
+        description: 'This document has already been submitted to the blockchain',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setSubmittingToBlockchain(true);
     
     try {
@@ -87,6 +126,9 @@ const Reporting = () => {
         title: 'Success',
         description: 'Document successfully submitted to blockchain!',
       });
+      
+      // Refresh blockchain status
+      await fetchBlockchainStatus();
       
     } catch (error: any) {
       console.error('Blockchain submission failed:', error);
@@ -208,38 +250,89 @@ const Reporting = () => {
         </div>
       </div>
 
-      <BlockchainStats projects={projects} />
+      <BlockchainWallet userRole={profile?.role} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Wallet className="w-5 h-5 mr-2" />
-            Blockchain Integration
-          </CardTitle>
-          <CardDescription>
-            Submit your project documentation to the blockchain for verification
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button 
-            onClick={handleSubmitToBlockchain}
-            disabled={submittingToBlockchain}
-            className="flex items-center"
-          >
-            {submittingToBlockchain ? (
-              <>
-                <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Submitting to Blockchain...
-              </>
+        {/* Project Map */}
+        <CarbonProjectMap 
+          projects={projects.map(p => ({
+            id: p.id,
+            title: p.title,
+            location: p.location,
+            coordinates: p.gps_coordinates || { lat: 20.5937, lng: 78.9629 },
+            credits: p.estimated_credits,
+            status: p.status
+          }))}
+          height="300px"
+          showControls={true}
+        />
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Wallet className="w-5 h-5 mr-2" />
+              Blockchain Integration
+            </CardTitle>
+            <CardDescription>
+              Submit your project documentation to the blockchain for verification
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Blockchain Status */}
+            {blockchainSubmitted ? (
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                  <div>
+                    <p className="font-medium text-green-800">Document Submitted to Blockchain</p>
+                    <p className="text-sm text-green-600">
+                      Status: {sellerData?.credits > 0 ? 'Verified & Credits Assigned' : 'Pending Verification'}
+                    </p>
+                    {sellerData?.credits > 0 && (
+                      <p className="text-sm text-green-600">
+                        Credits: {sellerData.credits} tCO₂e | Available for Sale: {sellerData.forSale} tCO₂e
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
             ) : (
-              <>
-                <Wallet className="w-4 h-4 mr-2" />
-                Submit Document to Blockchain
-              </>
+              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <Clock className="w-5 h-5 text-yellow-600 mr-2" />
+                  <div>
+                    <p className="font-medium text-yellow-800">Ready for Blockchain Submission</p>
+                    <p className="text-sm text-yellow-600">
+                      Submit your project to the blockchain for verification
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
-          </Button>
-        </CardContent>
-      </Card>
+            
+            <Button 
+              onClick={handleSubmitToBlockchain}
+              disabled={submittingToBlockchain || blockchainSubmitted}
+              className="flex items-center"
+            >
+              {submittingToBlockchain ? (
+                <>
+                  <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Submitting to Blockchain...
+                </>
+              ) : blockchainSubmitted ? (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Already Submitted
+                </>
+              ) : (
+                <>
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Submit Document to Blockchain
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
 
       <div className="max-w-2xl mx-auto">
         <Card className="shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
