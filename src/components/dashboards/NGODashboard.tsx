@@ -49,13 +49,26 @@ const NGODashboard = () => {
         .eq('owner_id', profile.id)
         .order('created_at', { ascending: false });
 
-      // Fetch NGO's carbon credits
+      // Get blockchain credits for this NGO
+      let blockchainCredits = 0;
+      try {
+        const { getSellerData, getWalletAddress } = await import('@/contracts/contract');
+        const walletAddress = await getWalletAddress();
+        const sellerData = await getSellerData(walletAddress);
+        blockchainCredits = Number(sellerData[1]); // Credits from smart contract
+      } catch (error) {
+        console.log('Could not fetch blockchain data:', error);
+      }
+
+      // Fetch NGO's carbon credits from database
       const { data: creditsData } = await supabase
         .from('carbon_credits')
         .select('credits_amount, status')
         .eq('owner_id', profile.id);
 
-      const totalCredits = creditsData?.reduce((sum, credit) => sum + Number(credit.credits_amount), 0) || 0;
+      const dbCredits = creditsData?.reduce((sum, credit) => sum + Number(credit.credits_amount), 0) || 0;
+      const totalCredits = blockchainCredits + dbCredits; // Combine blockchain and database credits
+      
       const verifiedProjects = projectsData?.filter(p => p.status === 'verified').length || 0;
       const pendingCredits = projectsData?.filter(p => p.status === 'pending').reduce((sum, p) => sum + Number(p.estimated_credits), 0) || 0;
 

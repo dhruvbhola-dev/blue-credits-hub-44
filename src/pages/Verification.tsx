@@ -88,8 +88,29 @@ const Verification = () => {
       
       toast({
         title: 'Success',
-        description: `Tokens assigned successfully to ${sellerAddress}`,
+        description: `${amount} credits assigned successfully to NGO`,
       });
+      
+      // Update the project status and assign credits in Supabase after blockchain success
+      await supabase
+        .from('projects')
+        .update({ 
+          status: 'verified',
+          verifier_id: profile?.id,
+          verified_at: new Date().toISOString(),
+          verification_notes: verificationNotes[projectId] || null
+        })
+        .eq('id', projectId);
+
+      // Create carbon credits record for the NGO
+      await supabase
+        .from('carbon_credits')
+        .insert({
+          project_id: projectId,
+          owner_id: projects.find(p => p.id === projectId)?.owner_id,
+          credits_amount: amount,
+          status: 'active'
+        });
       
       // Update the project status in Supabase after blockchain success
       await handleVerification(projectId, 'verify');
@@ -308,20 +329,36 @@ const Verification = () => {
                   <Button
                     onClick={async () => {
                       try {
-                        // The project owner (NGO/local) must connect their wallet to receive tokens
-                        const sellerAddress = await getWalletAddress();
-                        const creditsToAssign = project.estimated_credits || 0;
-                        
-                        if (creditsToAssign <= 0) {
+                        // Get project owner's wallet address from profiles
+                        const { data: ownerProfile } = await supabase
+                          .from('profiles')
+                          .select('wallet_address')
+                          .eq('id', project.owner_id)
+                          .single();
+
+                        if (!ownerProfile?.wallet_address) {
                           toast({
-                            title: 'Error', 
-                            description: 'No credits to assign for this project',
+                            title: 'Error',
+                            description: 'Project owner must connect their wallet first',
                             variant: 'destructive'
                           });
                           return;
                         }
 
-                        await handleBlockchainVerification(project.id, sellerAddress, creditsToAssign);
+                        // Prompt verifier for credit amount
+                        const creditsInput = prompt(`Enter credits to assign to this project (Estimated: ${project.estimated_credits}):`, project.estimated_credits?.toString() || '0');
+                        const creditsToAssign = creditsInput ? parseInt(creditsInput) : 0;
+                        
+                        if (creditsToAssign <= 0) {
+                          toast({
+                            title: 'Error', 
+                            description: 'Please enter a valid number of credits to assign',
+                            variant: 'destructive'
+                          });
+                          return;
+                        }
+
+                        await handleBlockchainVerification(project.id, ownerProfile.wallet_address, creditsToAssign);
                       } catch (error: any) {
                         toast({
                           title: 'Error',
@@ -336,12 +373,12 @@ const Verification = () => {
                     {blockchainLoading[project.id] ? (
                       <>
                         <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        Verifying on Blockchain...
+                        Assigning Credits...
                       </>
                     ) : (
                       <>
                         <Wallet className="w-4 h-4 mr-2" />
-                        Verify & Assign Tokens
+                        Assign Credits to NGO
                       </>
                     )}
                   </Button>
