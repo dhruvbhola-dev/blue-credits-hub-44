@@ -66,16 +66,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="hidden md:flex items-center space-x-2">
                 <LanguageToggle />
                 <Button 
-                  variant="secondary" 
+                  variant="outline" 
                   size="sm" 
                   onClick={() => navigate('/auth')}
+                  className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                 >
                   {t('common.login')}
                 </Button>
                 <Button 
-                  variant="secondary" 
                   size="sm"
                   onClick={() => navigate('/auth')}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {t('common.signup')}
                 </Button>

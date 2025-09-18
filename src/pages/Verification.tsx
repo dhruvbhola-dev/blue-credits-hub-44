@@ -113,7 +113,8 @@ const Verification = () => {
       const updates: any = {
         status: action === 'verify' ? 'verified' : 'rejected',
         verifier_id: profile.id,
-        verified_at: new Date().toISOString()
+        verified_at: new Date().toISOString(),
+        verification_notes: verificationNotes[projectId] || null
       };
 
       const { error } = await supabase
@@ -307,14 +308,37 @@ const Verification = () => {
                   <Button
                     onClick={async () => {
                       try {
-                        // Note: This uses current user's wallet address as placeholder
-                        // In production, you'd need the project owner's wallet address
-                        const sellerAddress = await getWalletAddress();
-                        await handleBlockchainVerification(project.id, sellerAddress, project.estimated_credits);
+                        // Get project owner's wallet address from profiles
+                        const { data: ownerProfile } = await supabase
+                          .from('profiles')
+                          .select('wallet_address, user_id')
+                          .eq('id', project.owner_id)
+                          .single();
+
+                        if (!ownerProfile?.wallet_address) {
+                          toast({
+                            title: 'Error',
+                            description: 'Project owner must connect their wallet first',
+                            variant: 'destructive'
+                          });
+                          return;
+                        }
+
+                        const creditsToAssign = project.estimated_credits || 0;
+                        if (creditsToAssign <= 0) {
+                          toast({
+                            title: 'Error', 
+                            description: 'No credits to assign for this project',
+                            variant: 'destructive'
+                          });
+                          return;
+                        }
+
+                        await handleBlockchainVerification(project.id, ownerProfile.wallet_address, creditsToAssign);
                       } catch (error: any) {
                         toast({
                           title: 'Error',
-                          description: error.message || 'Failed to connect wallet',
+                          description: error.message || 'Failed to assign tokens',
                           variant: 'destructive'
                         });
                       }

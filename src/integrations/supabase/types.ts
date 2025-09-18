@@ -247,6 +247,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          verification_notes: string | null
           verified_at: string | null
           verifier_id: string | null
         }
@@ -263,6 +264,7 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          verification_notes?: string | null
           verified_at?: string | null
           verifier_id?: string | null
         }
@@ -279,6 +281,7 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          verification_notes?: string | null
           verified_at?: string | null
           verifier_id?: string | null
         }
