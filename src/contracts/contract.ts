@@ -1,17 +1,10 @@
 import { ethers } from "ethers";
 
-// Replace with your deployed contract address
-const CONTRACT_ADDRESS = "0x1234567890123456789012345678901234567890"; // TODO: Replace with actual address
+// Deployed Sepolia contract address
+const CONTRACT_ADDRESS = "0x746Be2382903ABDa6a081E1081A53C443B079F68";
 
-// Contract ABI - replace with your actual ABI
+// Contract ABI
 const CONTRACT_ABI = [
-  {
-    "inputs": [],
-    "name": "submitDocument",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
   {
     "inputs": [
       {
@@ -26,19 +19,6 @@ const CONTRACT_ABI = [
       }
     ],
     "name": "assignTokens",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "releaseForSale",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -64,26 +44,27 @@ const CONTRACT_ABI = [
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "sellers",
-    "outputs": [
-      {
         "internalType": "uint256",
-        "name": "credits",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "forSale",
+        "name": "_amount",
         "type": "uint256"
       }
     ],
-    "stateMutability": "view",
+    "name": "releaseForSale",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "submitDocument",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
   },
   {
     "inputs": [
@@ -99,6 +80,48 @@ const CONTRACT_ABI = [
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "sellers",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "hasSubmitted",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "credits",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "forSale",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verifier",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
