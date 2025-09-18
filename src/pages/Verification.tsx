@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWallet } from '@/contexts/WalletContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, X, Clock, FileText, MapPin, Calendar, Wallet, Award } from 'lucide-react';
+import { CheckCircle, X, Clock, FileText, MapPin, Calendar, Wallet, Award, AlertCircle } from 'lucide-react';
 import { getContract, getWalletAddress, getSellerData } from '@/contracts/contract';
 import BlockchainWallet from '@/components/BlockchainWallet';
 import CertificateGenerator from '@/components/Certificate/CertificateGenerator';
@@ -31,6 +32,7 @@ interface Project {
 
 const Verification = () => {
   const { profile } = useAuth();
+  const { walletAddress, isConnected, connectWallet } = useWallet();
   const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -333,6 +335,27 @@ const Verification = () => {
         </Badge>
       </div>
 
+      {/* Wallet Connection Status */}
+      {!isConnected && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-3">
+              <AlertCircle className="w-5 h-5 text-orange-600" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-800">Wallet Connection Required</h3>
+                <p className="text-sm text-orange-700">
+                  Connect your MetaMask wallet to verify projects and assign credits
+                </p>
+              </div>
+              <Button onClick={connectWallet} variant="outline">
+                <Wallet className="w-4 h-4 mr-2" />
+                Connect Wallet
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {projects.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
@@ -422,23 +445,38 @@ const Verification = () => {
                       }
 
                       try {
-                        // First, ensure verifier has wallet connected
-                        const verifierAddress = await getWalletAddress();
+                        // Check if verifier wallet is connected
+                        if (!isConnected || !walletAddress) {
+                          toast({
+                            title: 'Wallet Not Connected',
+                            description: 'Please connect your MetaMask wallet first',
+                            variant: 'destructive'
+                          });
+                          return;
+                        }
                         
                         // Get project owner's wallet address from profiles
-                        const { data: ownerProfile } = await supabase
+                        const { data: ownerProfile, error: profileError } = await supabase
                           .from('profiles')
-                          .select('wallet_address')
+                          .select('wallet_address, full_name')
                           .eq('id', project.owner_id)
                           .single();
 
-                        let ownerWalletAddress = ownerProfile?.wallet_address;
-
-                        // If owner doesn't have wallet address in DB, try to get it and update
-                        if (!ownerWalletAddress) {
+                        if (profileError) {
                           toast({
                             title: 'Error',
-                            description: 'Project owner must connect their wallet and have it saved. Please ask them to visit their dashboard.',
+                            description: 'Failed to fetch project owner profile',
+                            variant: 'destructive'
+                          });
+                          return;
+                        }
+
+                        const ownerWalletAddress = ownerProfile?.wallet_address;
+
+                        if (!ownerWalletAddress) {
+                          toast({
+                            title: 'Owner Wallet Not Connected',
+                            description: `${ownerProfile?.full_name || 'Project owner'} must connect their wallet first. Please ask them to visit their dashboard and connect MetaMask.`,
                             variant: 'destructive'
                           });
                           return;
@@ -454,9 +492,9 @@ const Verification = () => {
                         });
                       }
                      }}
-                    disabled={blockchainLoading[project.id] || !creditInputs[project.id]}
-                    className="flex items-center bg-primary hover:bg-primary/90 text-white disabled:opacity-50"
-                    size="lg"
+                     disabled={blockchainLoading[project.id] || !creditInputs[project.id] || !isConnected}
+                     className="flex items-center bg-primary hover:bg-primary/90 text-white disabled:opacity-50"
+                     size="lg"
                   >
                     {blockchainLoading[project.id] ? (
                       <>

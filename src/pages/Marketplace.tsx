@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWallet } from '@/contexts/WalletContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Wallet, Store, Users, TrendingUp, MapPin, Award, Download } from 'lucide-react';
+import { Wallet, Store, Users, TrendingUp, MapPin, Award, Download, AlertCircle } from 'lucide-react';
 import { getContract, getContractReadOnly, getWalletAddress } from '@/contracts/contract';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -31,6 +32,7 @@ interface Seller {
 
 const Marketplace = () => {
   const { profile } = useAuth();
+  const { walletAddress, isConnected, connectWallet } = useWallet();
   const { toast } = useToast();
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +45,8 @@ const Marketplace = () => {
 
   const fetchSellers = async () => {
     try {
+      setLoading(true);
+      
       // Get all profiles with wallet addresses that could have credits
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -76,8 +80,8 @@ const Marketplace = () => {
         try {
           const contract = await getContractReadOnly();
           const sellerInfo = await contract.sellers(profile.wallet_address);
-          const blockchainCredits = Number(sellerInfo.credits);
-          const blockchainForSale = Number(sellerInfo.forSale);
+          const blockchainCredits = Number(sellerInfo.credits || 0);
+          const blockchainForSale = Number(sellerInfo.forSale || 0);
 
           // Only include sellers who have credits for sale on blockchain
           if (blockchainForSale > 0) {
@@ -112,8 +116,8 @@ const Marketplace = () => {
     } catch (error) {
       console.error('Error fetching sellers:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load marketplace data from blockchain',
+        title: 'Blockchain Connection Error',
+        description: 'Failed to load marketplace data. Please check your wallet connection.',
         variant: 'destructive'
       });
     } finally {
@@ -122,6 +126,15 @@ const Marketplace = () => {
   };
 
   const handleBuyCredits = async (sellerAddress: string, amount: number) => {
+    if (!isConnected) {
+      toast({
+        title: 'Wallet Not Connected',
+        description: 'Please connect your MetaMask wallet first',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setBuyingLoading(prev => ({ ...prev, [sellerAddress]: true }));
     
     try {
@@ -131,7 +144,7 @@ const Marketplace = () => {
       const costInWei = Math.floor(amount * (seller?.price_per_credit || 0.001) * 1e18);
       
       const tx = await contract.buy(sellerAddress, amount, {
-        value: costInWei
+        value: costInWei.toString()
       });
       
       toast({
@@ -142,8 +155,8 @@ const Marketplace = () => {
       await tx.wait();
       
       toast({
-        title: 'Success',
-        description: `Successfully purchased ${amount} credits!`,
+        title: 'Purchase Successful!',
+        description: `Successfully purchased ${amount} carbon credits for ${(amount * (seller?.price_per_credit || 0.001)).toFixed(6)} ETH`,
       });
       
       // Refresh the sellers list
@@ -154,7 +167,7 @@ const Marketplace = () => {
       console.error('Buy credits failed:', error);
       toast({
         title: 'Transaction Failed',
-        description: error.message || 'Failed to purchase credits',
+        description: error.message || 'Failed to purchase credits. Please check your wallet balance.',
         variant: 'destructive'
       });
     } finally {
@@ -209,6 +222,27 @@ const Marketplace = () => {
           {sellers.length} Sellers
         </Badge>
       </div>
+
+      {/* Wallet Connection Status */}
+      {!isConnected && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-3">
+              <AlertCircle className="w-5 h-5 text-orange-600" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-800">Wallet Connection Required</h3>
+                <p className="text-sm text-orange-700">
+                  Connect your MetaMask wallet to purchase carbon credits
+                </p>
+              </div>
+              <Button onClick={connectWallet} variant="outline">
+                <Wallet className="w-4 h-4 mr-2" />
+                Connect Wallet
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {sellers.length === 0 ? (
         <Card>
@@ -314,7 +348,7 @@ const Marketplace = () => {
                         });
                       }
                     }}
-                    disabled={buyingLoading[seller.address] || !buyAmounts[seller.address]}
+                    disabled={buyingLoading[seller.address] || !buyAmounts[seller.address] || !isConnected}
                     className="flex items-center bg-primary hover:bg-primary/90"
                     size="lg"
                   >

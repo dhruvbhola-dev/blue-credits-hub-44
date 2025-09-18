@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWallet } from '@/contexts/WalletContext';
 import { useI18n } from '@/contexts/I18nContext';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -11,7 +13,8 @@ import {
   Store,
   LogOut,
   Menu,
-  X
+  X,
+  Wallet
 } from 'lucide-react';
 import ProfileBox from '@/components/ProfileBox';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -22,6 +25,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, profile, signOut } = useAuth();
+  const { walletAddress, isConnected, connectWallet } = useWallet();
   const { t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
@@ -50,48 +54,74 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               BlueCarbon Credits
             </Link>
             
-            {user ? (
-              <div className="hidden md:flex items-center space-x-4">
-                <LanguageToggle />
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  onClick={handleSignOut}
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  {t('common.signOut')}
-                </Button>
-              </div>
-            ) : (
-              <div className="hidden md:flex items-center space-x-2">
-                <LanguageToggle />
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate('/auth')}
-                  className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                >
-                  {t('common.login')}
-                </Button>
-                <Button 
-                  size="sm"
-                  onClick={() => navigate('/auth')}
-                  className="bg-primary text-primary-foreground hover:bg-primary/80"
-                >
-                  {t('common.signup')}
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center space-x-4">
+              <LanguageToggle />
+              
+              {user ? (
+                <div className="flex items-center space-x-4">
+                  <div className="hidden md:flex items-center space-x-2">
+                    {profile && (
+                      <Badge variant="secondary">
+                        {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
+                      </Badge>
+                    )}
+                    
+                    {isConnected ? (
+                      <Badge variant="outline" className="text-xs">
+                        <Wallet className="w-3 h-3 mr-1" />
+                        {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                      </Badge>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={connectWallet}
+                      >
+                        <Wallet className="w-4 h-4 mr-2" />
+                        Connect Wallet
+                      </Button>
+                    )}
+                    
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      {t('common.signOut')}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="hidden md:flex items-center space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigate('/auth')}
+                    className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                  >
+                    {t('common.login')}
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={() => navigate('/auth')}
+                    className="bg-primary text-primary-foreground hover:bg-primary/80"
+                  >
+                    {t('common.signup')}
+                  </Button>
+                </div>
+              )}
 
-            {/* Mobile menu button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden text-primary-foreground hover:bg-primary-foreground/20"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </Button>
+              {/* Mobile menu button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden text-primary-foreground hover:bg-primary-foreground/20"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
+            </div>
           </div>
         </div>
       </header>
