@@ -72,33 +72,49 @@ const Verification = () => {
     }
   };
 
-  const handleBlockchainVerification = async (projectId: string, sellerAddress: string, amount: number) => {
+  const handleGiveCredit = async (projectId: string) => {
     setBlockchainLoading(prev => ({ ...prev, [projectId]: true }));
     
     try {
+      // Get the project owner's wallet address
+      const project = projects.find(p => p.id === projectId);
+      if (!project) throw new Error('Project not found');
+
+      // Get owner's profile to find wallet address
+      const { data: ownerProfile } = await supabase
+        .from('profiles')
+        .select('wallet_address')
+        .eq('id', project.owner_id)
+        .single();
+
+      if (!ownerProfile?.wallet_address) {
+        throw new Error('Project owner must connect their wallet first');
+      }
+
       const contract = await getContract();
-      const tx = await contract.assignTokens(sellerAddress, amount);
+      // Assign 10 credits as specified
+      const tx = await contract.assignTokens(ownerProfile.wallet_address, 10);
       
       toast({
         title: 'Transaction Submitted',
-        description: 'Waiting for blockchain confirmation...',
+        description: 'Assigning credits on blockchain...',
       });
       
       await tx.wait();
       
       toast({
-        title: 'Success',
-        description: `Tokens assigned successfully to ${sellerAddress}`,
+        title: 'Credits Assigned!',
+        description: `Successfully assigned 10 credits to ${ownerProfile.wallet_address}`,
       });
       
-      // Update the project status in Supabase after blockchain success
+      // Update project status to approved in database
       await handleVerification(projectId, 'verify');
       
     } catch (error: any) {
-      console.error('Blockchain verification failed:', error);
+      console.error('Credit assignment failed:', error);
       toast({
-        title: 'Blockchain Error',
-        description: error.message || 'Failed to assign tokens on blockchain',
+        title: 'Assignment Failed',
+        description: error.message || 'Failed to assign credits on blockchain',
         variant: 'destructive'
       });
     } finally {
@@ -313,42 +329,20 @@ const Verification = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
-                  {/* {project.status === 'pending' && (
-                    // <Button
-                    //   variant="outline"
-                    //   onClick={() => updateToReview(project.id)}
-                    //   className="flex items-center"
-                    // >
-                    //   <Clock className="w-4 h-4 mr-2" />
-                    //   Start Review
-                    // </Button>
-                  )} */}
-                  
                   <Button
-                    onClick={async () => {
-                      try {
-                        const walletAddress = await getWalletAddress();
-                        await handleBlockchainVerification(project.id, walletAddress, project.estimated_credits);
-                      } catch (error: any) {
-                        toast({
-                          title: 'Error',
-                          description: error.message || 'Failed to connect wallet',
-                          variant: 'destructive'
-                        });
-                      }
-                    }}
+                    onClick={() => handleGiveCredit(project.id)}
                     disabled={blockchainLoading[project.id]}
                     className="flex items-center bg-green-600 hover:bg-green-700 disabled:opacity-50"
                   >
                     {blockchainLoading[project.id] ? (
                       <>
                         <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        Verifying on Blockchain...
+                        Assigning Credits...
                       </>
                     ) : (
                       <>
-                        <Wallet className="w-4 h-4 mr-2" />
-                        Verify & Assign Tokens
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Give Credit (10 tCO2e)
                       </>
                     )}
                   </Button>
@@ -359,7 +353,7 @@ const Verification = () => {
                     className="flex items-center"
                   >
                     <X className="w-4 h-4 mr-2" />
-                    Reject Project
+                    Reject
                   </Button>
                 </div>
               </CardContent>
