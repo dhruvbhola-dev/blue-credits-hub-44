@@ -10,6 +10,7 @@ const Dashboard = () => {
   const NGODashboard = React.lazy(() => import('@/components/dashboards/NGODashboard'));
   const PanchayatDashboard = React.lazy(() => import('@/components/dashboards/PanchayatDashboard'));
   const VerifierDashboard = React.lazy(() => import('@/components/dashboards/VerifierDashboard'));
+  const CompanyDashboard = React.lazy(() => import('@/components/dashboards/CompanyDashboard'));
 
   if (!profile) {
     return (
@@ -43,7 +44,7 @@ const Dashboard = () => {
       case 'company':
         return (
           <React.Suspense fallback={<div className="animate-pulse">Loading Company dashboard...</div>}>
-            <AdminDashboard />
+            <CompanyDashboard />
           </React.Suspense>
         );
       default:

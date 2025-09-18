@@ -391,21 +391,7 @@ const Verification = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <Label htmlFor={`notes-${project.id}`}>Verification Notes</Label>
-                  <Textarea
-                    id={`notes-${project.id}`}
-                    placeholder="Add your verification notes, concerns, or recommendations..."
-                    value={verificationNotes[project.id] || ''}
-                    onChange={(e) => setVerificationNotes(prev => ({
-                      ...prev,
-                      [project.id]: e.target.value
-                    }))}
-                    rows={3}
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor={`credits-${project.id}`}>Credits to Assign</Label>
+                  <Label htmlFor={`credits-${project.id}`}>Credits to Assign to NGO</Label>
                   <Input
                     id={`credits-${project.id}`}
                     type="number"
@@ -417,21 +403,11 @@ const Verification = () => {
                     }))}
                     min="1"
                     max="10000"
+                    className="text-lg font-semibold"
                   />
                 </div>
 
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
-                  {project.status === 'pending' && (
-                    <Button
-                      variant="outline"
-                      onClick={() => updateToReview(project.id)}
-                      className="flex items-center"
-                    >
-                      <Clock className="w-4 h-4 mr-2" />
-                      Start Review
-                    </Button>
-                  )}
-                  
                   <Button
                     onClick={async () => {
                       const creditsToAssign = parseInt(creditInputs[project.id] || '0');
@@ -472,17 +448,18 @@ const Verification = () => {
                       }
                      }}
                     disabled={blockchainLoading[project.id] || !creditInputs[project.id]}
-                    className="flex items-center bg-primary hover:bg-primary/90 disabled:opacity-50"
+                    className="flex items-center bg-primary hover:bg-primary/90 text-white disabled:opacity-50"
+                    size="lg"
                   >
                     {blockchainLoading[project.id] ? (
                       <>
                         <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        Assigning Credits...
+                        Sending Credits to NGO...
                       </>
                     ) : (
                       <>
                         <Wallet className="w-4 h-4 mr-2" />
-                        Assign Blockchain Credits
+                        Send Credits to NGO
                       </>
                     )}
                   </Button>
@@ -496,30 +473,22 @@ const Verification = () => {
                         }
                       }}
                       disabled={backupLoading[project.id] || !creditInputs[project.id]}
-                      className="flex items-center bg-secondary hover:bg-secondary/90 disabled:opacity-50"
+                      className="flex items-center bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+                      size="lg"
                     >
                       {backupLoading[project.id] ? (
                         <>
-                          <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-black border-t-transparent" />
-                          Issuing Certificate...
+                          <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Generating Certificate...
                         </>
                       ) : (
                         <>
                           <Award className="w-4 h-4 mr-2" />
-                          Issue Credits with Certificate
+                          Generate Certificate
                         </>
                       )}
                     </Button>
                   )}
-                  
-                  <Button
-                    variant="destructive"
-                    onClick={() => handleVerification(project.id, 'reject')}
-                    className="flex items-center"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Reject Project
-                  </Button>
                 </div>
               </CardContent>
             </Card>

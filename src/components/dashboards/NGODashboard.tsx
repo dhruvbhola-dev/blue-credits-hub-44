@@ -194,6 +194,34 @@ const NGODashboard = () => {
         </Card>
       </div>
 
+      {/* Verification Status & Certificates */}
+      <Card className="border-l-4 border-l-green-500">
+        <CardHeader>
+          <CardTitle className="flex items-center text-green-700">
+            <Award className="w-5 h-5 mr-2" />
+            ✅ Verified by Verifier
+          </CardTitle>
+          <CardDescription>
+            Your projects have been successfully verified and credits assigned
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p><strong>Credits Received:</strong> {stats.totalCredits} tCO₂e</p>
+              <p><strong>Verified Projects:</strong> {stats.verifiedProjects}</p>
+            </div>
+            <div>
+              <p><strong>Available for Sale:</strong> {stats.totalCredits} tCO₂e</p>
+              <p><strong>Status:</strong> <Badge variant="outline" className="bg-green-100 text-green-800">Active</Badge></p>
+            </div>
+          </div>
+          <Button className="mt-4" onClick={() => navigate('/marketplace')}>
+            View Marketplace Listing
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="cursor-pointer hover:shadow-lg transition-all duration-200 border-l-4 border-l-primary" onClick={() => navigate('/reporting')}>
@@ -228,7 +256,7 @@ const NGODashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center">
               <Award className="w-5 h-5 mr-2" />
-              Certificates
+              Certificates Issued
             </CardTitle>
           </CardHeader>
           <CardContent>
