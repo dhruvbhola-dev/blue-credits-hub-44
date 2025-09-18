@@ -308,23 +308,10 @@ const Verification = () => {
                   <Button
                     onClick={async () => {
                       try {
-                        // Get project owner's wallet address from profiles
-                        const { data: ownerProfile } = await supabase
-                          .from('profiles')
-                          .select('wallet_address, user_id')
-                          .eq('id', project.owner_id)
-                          .single();
-
-                        if (!ownerProfile?.wallet_address) {
-                          toast({
-                            title: 'Error',
-                            description: 'Project owner must connect their wallet first',
-                            variant: 'destructive'
-                          });
-                          return;
-                        }
-
+                        // The project owner (NGO/local) must connect their wallet to receive tokens
+                        const sellerAddress = await getWalletAddress();
                         const creditsToAssign = project.estimated_credits || 0;
+                        
                         if (creditsToAssign <= 0) {
                           toast({
                             title: 'Error', 
@@ -334,15 +321,15 @@ const Verification = () => {
                           return;
                         }
 
-                        await handleBlockchainVerification(project.id, ownerProfile.wallet_address, creditsToAssign);
+                        await handleBlockchainVerification(project.id, sellerAddress, creditsToAssign);
                       } catch (error: any) {
                         toast({
                           title: 'Error',
-                          description: error.message || 'Failed to assign tokens',
+                          description: error.message || 'Failed to assign tokens. Please ensure MetaMask is connected.',
                           variant: 'destructive'
                         });
                       }
-                    }}
+                     }}
                     disabled={blockchainLoading[project.id]}
                     className="flex items-center bg-green-600 hover:bg-green-700 disabled:opacity-50"
                   >

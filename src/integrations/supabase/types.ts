@@ -166,6 +166,7 @@ export type Database = {
           role: string
           updated_at: string
           user_id: string
+          wallet_address: string | null
         }
         Insert: {
           address?: string | null
@@ -177,6 +178,7 @@ export type Database = {
           role: string
           updated_at?: string
           user_id: string
+          wallet_address?: string | null
         }
         Update: {
           address?: string | null
@@ -188,6 +190,7 @@ export type Database = {
           role?: string
           updated_at?: string
           user_id?: string
+          wallet_address?: string | null
         }
         Relationships: []
       }
