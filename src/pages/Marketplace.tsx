@@ -1,29 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Store, Leaf, DollarSign, MapPin, Calendar, TrendingUp, Wallet } from 'lucide-react';
+import { Wallet, Store, Users, TrendingUp } from 'lucide-react';
 import { getContract, getContractReadOnly, getWalletAddress } from '@/contracts/contract';
-import { ethers } from 'ethers';
+import { supabase } from '@/integrations/supabase/client';
 
-interface MarketplaceListing {
-  id: string;
-  price_per_credit: number;
-  credits_amount: number;
-  status: string;
-  created_at: string;
-  project_id: string;
-  projects: {
-    title: string;
-    location: string;
-    area_hectares: number;
-  };
-  profiles: {
+interface Seller {
+  address: string;
+  credits: number;
+  forSale: number;
+  profile?: {
     full_name: string;
     organization?: string;
   };
@@ -32,87 +22,51 @@ interface MarketplaceListing {
 const Marketplace = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
-  const [listings, setListings] = useState<MarketplaceListing[]>([]);
-  const [userCredits, setUserCredits] = useState<any[]>([]);
+  const [sellers, setSellers] = useState<Seller[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateListing, setShowCreateListing] = useState(false);
-  const [newListing, setNewListing] = useState({
-    creditId: '',
-    pricePerCredit: '',
-    creditsToSell: ''
-  });
-  const [blockchainData, setBlockchainData] = useState<{[key: string]: any}>({});
-  const [purchasing, setPurchasing] = useState<{[key: string]: boolean}>({});
+  const [buyingLoading, setBuyingLoading] = useState<{[key: string]: boolean}>({});
+  const [buyAmounts, setBuyAmounts] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
-    fetchMarketplaceData();
-    fetchBlockchainData();
+    fetchSellers();
   }, []);
 
-  const fetchBlockchainData = async () => {
+  const fetchSellers = async () => {
     try {
+      // Get all profiles to map addresses to names
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, organization')
+        .in('role', ['ngo', 'localpeople']);
+
       const contract = await getContractReadOnly();
-      const walletAddress = await getWalletAddress();
-      
-      // Fetch seller data
-      const sellerData = await contract.sellers(walletAddress);
-      
-      // Fetch buyer data
-      const buyerCredits = await contract.buyers(walletAddress);
-      
-      setBlockchainData({
-        sellerCredits: sellerData.credits.toString(),
-        sellerForSale: sellerData.forSale.toString(),
-        buyerCredits: buyerCredits.toString()
-      });
-    } catch (error) {
-      console.error('Error fetching blockchain data:', error);
-    }
-  };
+      const sellersData: Seller[] = [];
 
-  const fetchMarketplaceData = async () => {
-    try {
-      // Fetch active marketplace listings
-      const { data: listingsData, error: listingsError } = await supabase
-        .from('marketplace_listings')
-        .select(`
-          *,
-          projects (
-            title,
-            location,
-            area_hectares
-          ),
-          profiles!marketplace_listings_seller_id_fkey (
-            full_name,
-            organization
-          )
-        `)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-
-      if (listingsError) throw listingsError;
-      setListings(listingsData || []);
-
-      // Fetch user's available credits for selling
-      if (profile) {
-        const { data: creditsData, error: creditsError } = await supabase
-          .from('carbon_credits')
-          .select(`
-            *,
-            projects (
-              title,
-              location
-            )
-          `)
-          .eq('owner_id', profile.id)
-          .eq('status', 'active');
-
-        if (creditsError) throw creditsError;
-        setUserCredits(creditsData || []);
+      for (const profileData of profiles || []) {
+        try {
+          // For demo purposes, we'll use a mock address based on user ID
+          const mockAddress = `0x${profileData.id.replace(/-/g, '').substring(0, 40)}`;
+          
+          const sellerInfo = await contract.sellers(mockAddress);
+          if (sellerInfo.forSale > 0) {
+            sellersData.push({
+              address: mockAddress,
+              credits: Number(sellerInfo.credits),
+              forSale: Number(sellerInfo.forSale),
+              profile: {
+                full_name: profileData.full_name,
+                organization: profileData.organization
+              }
+            });
+          }
+        } catch (error) {
+          // Skip this seller if blockchain call fails
+        }
       }
 
+      setSellers(sellersData);
     } catch (error) {
-      console.error('Error fetching marketplace data:', error);
+      console.error('Error fetching sellers:', error);
       toast({
         title: 'Error',
         description: 'Failed to load marketplace data',
@@ -123,114 +77,72 @@ const Marketplace = () => {
     }
   };
 
-  const createListing = async () => {
-    if (!profile || !newListing.creditId || !newListing.pricePerCredit || !newListing.creditsToSell) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all required fields',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('marketplace_listings')
-        .insert({
-          project_id: newListing.creditId,
-          seller_id: profile.id,
-          price_per_credit: parseFloat(newListing.pricePerCredit),
-          credits_amount: parseFloat(newListing.creditsToSell),
-          status: 'active'
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Your listing has been created successfully!'
-      });
-
-      setShowCreateListing(false);
-      setNewListing({ creditId: '', pricePerCredit: '', creditsToSell: '' });
-      fetchMarketplaceData();
-
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create listing',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const purchaseCredits = async (listingId: string, creditsAmount: number, pricePerCredit: number, sellerAddress: string) => {
-    if (!profile) {
-      toast({
-        title: 'Error',
-        description: 'You must be logged in to purchase credits',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setPurchasing(prev => ({ ...prev, [listingId]: true }));
-
+  const handleBuyCredits = async (sellerAddress: string, amount: number) => {
+    setBuyingLoading(prev => ({ ...prev, [sellerAddress]: true }));
+    
     try {
       const contract = await getContract();
-      const totalCost = creditsAmount * pricePerCredit;
-      
-      // Convert to wei (assuming price is in ETH)
-      const costInWei = ethers.parseEther(totalCost.toString());
-      
-      const tx = await contract.buy(sellerAddress, creditsAmount, { value: costInWei });
+      const tx = await contract.buy(sellerAddress, amount, {
+        value: amount // 1 wei per credit as per contract
+      });
       
       toast({
         title: 'Transaction Submitted',
-        description: 'Purchase transaction sent to blockchain...',
+        description: 'Waiting for blockchain confirmation...',
       });
       
       await tx.wait();
       
       toast({
-        title: 'Purchase Successful',
-        description: `Successfully purchased ${creditsAmount} credits for ${totalCost} ETH`,
+        title: 'Success',
+        description: `Successfully purchased ${amount} credits!`,
       });
       
-      // Refresh data
-      await Promise.all([fetchMarketplaceData(), fetchBlockchainData()]);
+      // Refresh the sellers list
+      await fetchSellers();
+      setBuyAmounts(prev => ({ ...prev, [sellerAddress]: '' }));
       
     } catch (error: any) {
-      console.error('Purchase failed:', error);
+      console.error('Buy credits failed:', error);
       toast({
-        title: 'Purchase Failed',
-        description: error.message || 'Failed to complete purchase',
+        title: 'Transaction Failed',
+        description: error.message || 'Failed to purchase credits',
         variant: 'destructive'
       });
     } finally {
-      setPurchasing(prev => ({ ...prev, [listingId]: false }));
+      setBuyingLoading(prev => ({ ...prev, [sellerAddress]: false }));
     }
   };
+
+  if (profile?.role !== 'company') {
+    return (
+      <div className="text-center py-12">
+        <Store className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+        <h2 className="text-2xl font-bold mb-2">Access Restricted</h2>
+        <p className="text-muted-foreground">
+          This page is only accessible to companies.
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-6 bg-muted rounded w-3/4"></div>
-                <div className="h-4 bg-muted rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="h-4 bg-muted rounded"></div>
-                  <div className="h-4 bg-muted rounded w-5/6"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {[...Array(3)].map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader>
+              <div className="h-6 bg-muted rounded w-3/4"></div>
+              <div className="h-4 bg-muted rounded w-1/2"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="h-4 bg-muted rounded"></div>
+                <div className="h-4 bg-muted rounded w-5/6"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     );
   }
@@ -239,254 +151,115 @@ const Marketplace = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Carbon Credit Marketplace</h1>
+          <h1 className="text-3xl font-bold">Carbon Credits Marketplace</h1>
           <p className="text-muted-foreground">
-            Buy and sell verified blue carbon credits
+            Purchase verified carbon credits from certified projects
           </p>
         </div>
-        
-        {profile && userCredits.length > 0 && (
-          <Button onClick={() => setShowCreateListing(!showCreateListing)}>
-            <Store className="w-4 h-4 mr-2" />
-            {showCreateListing ? 'Cancel' : 'Create Listing'}
-          </Button>
-        )}
+        <Badge variant="outline" className="text-lg px-3 py-1">
+          <Store className="w-4 h-4 mr-2" />
+          {sellers.length} Sellers
+        </Badge>
       </div>
 
-      {/* Market Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {sellers.length === 0 ? (
         <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{listings.length}</div>
-            <p className="text-xs text-muted-foreground">Active Listings</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">
-              {blockchainData.sellerCredits || '0'}
-            </div>
-            <p className="text-xs text-muted-foreground">My Credits (Blockchain)</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">
-              {blockchainData.buyerCredits || '0'}
-            </div>
-            <p className="text-xs text-muted-foreground">Owned Credits</p>
-          </CardContent>
-        </Card>
-        
-         <Card>
-           <CardContent className="pt-6">
-             <div className="text-2xl font-bold">
-               {listings.reduce((sum, listing) => sum + listing.credits_amount, 0).toFixed(0)}
-             </div>
-             <p className="text-xs text-muted-foreground">Credits Available</p>
-           </CardContent>
-         </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              $
-              {listings.length > 0 
-                ? (listings.reduce((sum, listing) => sum + listing.price_per_credit, 0) / listings.length).toFixed(2)
-                : '0.00'
-              }
-            </div>
-            <p className="text-xs text-muted-foreground">Avg Price/Credit</p>
-          </CardContent>
-        </Card>
-        
-         <Card>
-           <CardContent className="pt-6">
-             <div className="text-2xl font-bold text-green-600">
-               $
-               {listings.reduce((sum, listing) => sum + (listing.credits_amount * listing.price_per_credit), 0).toFixed(0)}
-             </div>
-             <p className="text-xs text-muted-foreground">Total Market Value</p>
-           </CardContent>
-         </Card>
-      </div>
-
-      {/* Create Listing Form */}
-      {showCreateListing && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Listing</CardTitle>
-            <CardDescription>
-              List your carbon credits for sale
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="creditSelect">Select Credit Package</Label>
-              <select
-                id="creditSelect"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                value={newListing.creditId}
-                onChange={(e) => setNewListing(prev => ({ ...prev, creditId: e.target.value }))}
-              >
-                <option value="">Choose a credit package...</option>
-                {userCredits.map((credit) => (
-                  <option key={credit.id} value={credit.id}>
-                    {credit.projects?.title} - {credit.credits_amount} credits
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="pricePerCredit">Price per Credit ($)</Label>
-                <Input
-                  id="pricePerCredit"
-                  type="number"
-                  step="0.01"
-                  value={newListing.pricePerCredit}
-                  onChange={(e) => setNewListing(prev => ({ ...prev, pricePerCredit: e.target.value }))}
-                  placeholder="25.00"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="creditsToSell">Credits to Sell</Label>
-                <Input
-                  id="creditsToSell"
-                  type="number"
-                  step="0.01"
-                  value={newListing.creditsToSell}
-                  onChange={(e) => setNewListing(prev => ({ ...prev, creditsToSell: e.target.value }))}
-                  placeholder="100"
-                />
-              </div>
-            </div>
-            
-            <div className="flex space-x-2">
-              <Button onClick={createListing}>Create Listing</Button>
-              <Button variant="outline" onClick={() => setShowCreateListing(false)}>
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Marketplace Listings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {listings.length === 0 ? (
-          <div className="col-span-full text-center py-12">
+          <CardContent className="text-center py-12">
             <Store className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-xl font-semibold mb-2">No Listings Available</h3>
+            <h2 className="text-2xl font-bold mb-2">No Credits Available</h2>
             <p className="text-muted-foreground">
-              Be the first to list carbon credits for sale!
+              There are no carbon credits available for purchase at this time.
             </p>
-          </div>
-        ) : (
-          listings.map((listing) => (
-            <Card key={listing.id} className="overflow-hidden">
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6">
+          {sellers.map((seller) => (
+            <Card key={seller.address} className="overflow-hidden">
               <CardHeader>
                 <div className="flex items-start justify-between">
-                 <div>
-                   <CardTitle className="text-lg">
-                     {listing.projects?.title}
-                   </CardTitle>
-                   <CardDescription className="flex items-center mt-1">
-                     <MapPin className="w-3 h-3 mr-1" />
-                     {listing.projects?.location}
-                   </CardDescription>
-                 </div>
-                  <Badge variant="outline" className="bg-green-50 text-green-700">
-                    <Leaf className="w-3 h-3 mr-1" />
-                    Active
+                  <div className="space-y-1">
+                    <CardTitle className="text-xl flex items-center">
+                      <Users className="w-5 h-5 mr-2" />
+                      {seller.profile?.full_name || 'Unknown Seller'}
+                    </CardTitle>
+                    <CardDescription>
+                      {seller.profile?.organization && (
+                        <span className="text-sm">{seller.profile.organization}</span>
+                      )}
+                    </CardDescription>
+                  </div>
+                  <Badge variant="secondary">
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    {seller.forSale} Available
                   </Badge>
                 </div>
               </CardHeader>
-              
+
               <CardContent className="space-y-4">
-                 <div className="grid grid-cols-2 gap-4 text-sm">
-                   <div>
-                     <p className="text-muted-foreground">Available Credits</p>
-                     <p className="font-semibold">{listing.credits_amount} tCO2e</p>
-                   </div>
-                   <div>
-                     <p className="text-muted-foreground">Price per Credit</p>
-                     <p className="font-semibold text-green-600">
-                       ${listing.price_per_credit.toFixed(2)}
-                     </p>
-                   </div>
-                 </div>
-                 
-                 <div className="text-sm">
-                   <p className="text-muted-foreground">Project Area</p>
-                   <p>{listing.projects?.area_hectares} hectares</p>
-                 </div>
-                
-                <div className="text-sm">
-                  <p className="text-muted-foreground">Seller</p>
-                  <p>{listing.profiles?.full_name}</p>
-                  {listing.profiles?.organization && (
-                    <p className="text-xs text-muted-foreground">
-                      {listing.profiles.organization}
-                    </p>
-                  )}
+                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p><strong>Seller Address:</strong></p>
+                    <p className="font-mono text-xs break-all">{seller.address}</p>
+                  </div>
+                  <div>
+                    <p><strong>Total Credits:</strong> {seller.credits} tCO₂e</p>
+                    <p><strong>For Sale:</strong> {seller.forSale} tCO₂e</p>
+                  </div>
                 </div>
-                
-                 <div className="pt-2 border-t">
-                   <div className="flex items-center justify-between mb-3">
-                     <span className="text-lg font-bold">
-                       Total: ${(listing.credits_amount * listing.price_per_credit).toFixed(2)}
-                     </span>
-                   </div>
-                   
-                    <Button 
-                      className="w-full" 
-                      onClick={async () => {
-                        try {
-                          const sellerWallet = await getWalletAddress(); // In real app, this would be the actual seller's address
-                          await purchaseCredits(
-                            listing.id, 
-                            listing.credits_amount, 
-                            listing.price_per_credit,
-                            sellerWallet
-                          );
-                        } catch (error: any) {
-                          toast({
-                            title: 'Error',
-                            description: error.message || 'Failed to initiate purchase',
-                            variant: 'destructive'
-                          });
-                        }
-                      }}
-                      disabled={purchasing[listing.id]}
-                    >
-                      {purchasing[listing.id] ? (
-                        <>
-                          <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                          Purchasing...
-                        </>
-                      ) : (
-                        <>
-                          <Wallet className="w-4 h-4 mr-2" />
-                          Purchase Credits
-                        </>
-                      )}
-                    </Button>
-                 </div>
-                
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <Calendar className="w-3 h-3 mr-1" />
-                  Listed {new Date(listing.created_at).toLocaleDateString()}
-                </p>
+
+                <div className="flex items-center space-x-4 pt-4 border-t">
+                  <Input
+                    type="number"
+                    placeholder="Amount to buy"
+                    min="1"
+                    max={seller.forSale}
+                    value={buyAmounts[seller.address] || ''}
+                    onChange={(e) => setBuyAmounts(prev => ({
+                      ...prev,
+                      [seller.address]: e.target.value
+                    }))}
+                    className="w-32"
+                  />
+                  
+                  <Button
+                    onClick={() => {
+                      const amount = parseInt(buyAmounts[seller.address] || '0');
+                      if (amount > 0 && amount <= seller.forSale) {
+                        handleBuyCredits(seller.address, amount);
+                      } else {
+                        toast({
+                          title: 'Invalid Amount',
+                          description: 'Please enter a valid amount to purchase',
+                          variant: 'destructive'
+                        });
+                      }
+                    }}
+                    disabled={buyingLoading[seller.address] || !buyAmounts[seller.address]}
+                    className="flex items-center"
+                  >
+                    {buyingLoading[seller.address] ? (
+                      <>
+                        <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Purchasing...
+                      </>
+                    ) : (
+                      <>
+                        <Wallet className="w-4 h-4 mr-2" />
+                        Buy Credits
+                      </>
+                    )}
+                  </Button>
+
+                  <p className="text-sm text-muted-foreground">
+                    Cost: {buyAmounts[seller.address] || '0'} wei
+                  </p>
+                </div>
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

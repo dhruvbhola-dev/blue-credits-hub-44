@@ -113,8 +113,7 @@ const Verification = () => {
       const updates: any = {
         status: action === 'verify' ? 'verified' : 'rejected',
         verifier_id: profile.id,
-        verified_at: new Date().toISOString(),
-        verification_notes: verificationNotes[projectId] || ''
+        verified_at: new Date().toISOString()
       };
 
       const { error } = await supabase
@@ -123,25 +122,6 @@ const Verification = () => {
         .eq('id', projectId);
 
       if (error) throw error;
-
-      // If verified, create carbon credits
-      if (action === 'verify') {
-        const project = projects.find(p => p.id === projectId);
-        if (project) {
-          const { error: creditError } = await supabase
-            .from('carbon_credits')
-            .insert({
-              project_id: projectId,
-              owner_id: project.owner_id,
-              credits_amount: project.estimated_credits,
-              status: 'active'
-            });
-
-          if (creditError) {
-            console.error('Error creating carbon credits:', creditError);
-          }
-        }
-      }
 
       if (action === 'reject') {
         toast({
@@ -327,8 +307,10 @@ const Verification = () => {
                   <Button
                     onClick={async () => {
                       try {
-                        const walletAddress = await getWalletAddress();
-                        await handleBlockchainVerification(project.id, walletAddress, project.estimated_credits);
+                        // Note: This uses current user's wallet address as placeholder
+                        // In production, you'd need the project owner's wallet address
+                        const sellerAddress = await getWalletAddress();
+                        await handleBlockchainVerification(project.id, sellerAddress, project.estimated_credits);
                       } catch (error: any) {
                         toast({
                           title: 'Error',

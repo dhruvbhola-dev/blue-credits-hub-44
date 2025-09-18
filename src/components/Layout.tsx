@@ -73,10 +73,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   {t('common.login')}
                 </Button>
                 <Button 
-                  variant="outline" 
+                  variant="secondary" 
                   size="sm"
                   onClick={() => navigate('/auth')}
-                  className="text-primary-foreground border-primary-foreground hover:bg-primary-foreground hover:text-primary"
                 >
                   {t('common.signup')}
                 </Button>
