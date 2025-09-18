@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Wallet, Store, Users, TrendingUp } from 'lucide-react';
+import { Wallet, Store, Users, TrendingUp, MapPin, Award, Download } from 'lucide-react';
 import { getContract, getContractReadOnly, getWalletAddress } from '@/contracts/contract';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -17,6 +17,16 @@ interface Seller {
     full_name: string;
     organization?: string;
   };
+  project?: {
+    id: string;
+    title?: string;
+    location?: string;
+  };
+  certificate?: {
+    id: string;
+    certificate_url?: string;
+  } | null;
+  price_per_credit: number;
 }
 
 const Marketplace = () => {
@@ -33,35 +43,66 @@ const Marketplace = () => {
 
   const fetchSellers = async () => {
     try {
-      // Get all profiles to map addresses to names
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, organization')
-        .in('role', ['ngo', 'localpeople']);
+      // Get verified projects with credits from marketplace listings
+      const { data: listings, error } = await supabase
+        .from('marketplace_listings')
+        .select(`
+          *,
+          projects!marketplace_listings_project_id_fkey (
+            title,
+            location,
+            estimated_credits
+          ),
+          profiles!marketplace_listings_seller_id_fkey (
+            full_name,
+            organization,
+            wallet_address
+          ),
+          certificates!certificates_project_id_fkey (
+            id,
+            certificate_url
+          )
+        `)
+        .eq('status', 'active')
+        .gt('credits_amount', 0);
 
-      const contract = await getContractReadOnly();
+      if (error) throw error;
+
       const sellersData: Seller[] = [];
 
-      for (const profileData of profiles || []) {
-        try {
-          // For demo purposes, we'll use a mock address based on user ID
-          const mockAddress = `0x${profileData.id.replace(/-/g, '').substring(0, 40)}`;
-          
-          const sellerInfo = await contract.sellers(mockAddress);
-          if (sellerInfo.forSale > 0) {
-            sellersData.push({
-              address: mockAddress,
-              credits: Number(sellerInfo.credits),
-              forSale: Number(sellerInfo.forSale),
-              profile: {
-                full_name: profileData.full_name,
-                organization: profileData.organization
-              }
-            });
+      for (const listing of listings || []) {
+        // Try to get blockchain data if wallet address exists
+        let blockchainCredits = 0;
+        let blockchainForSale = 0;
+        
+        if (listing.profiles?.wallet_address) {
+          try {
+            const contract = await getContractReadOnly();
+            const sellerInfo = await contract.sellers(listing.profiles.wallet_address);
+            blockchainCredits = Number(sellerInfo.credits);
+            blockchainForSale = Number(sellerInfo.forSale);
+          } catch (error) {
+            // Use database data if blockchain fails
+            console.log('Using database fallback for seller:', listing.profiles?.full_name);
           }
-        } catch (error) {
-          // Skip this seller if blockchain call fails
         }
+
+        sellersData.push({
+          address: listing.profiles?.wallet_address || `DB-${listing.seller_id}`,
+          credits: blockchainCredits || listing.credits_amount,
+          forSale: blockchainForSale || listing.credits_amount,
+          profile: {
+            full_name: listing.profiles?.full_name || 'Unknown',
+            organization: listing.profiles?.organization
+          },
+          project: {
+            id: listing.project_id,
+            title: listing.projects?.title,
+            location: listing.projects?.location
+          },
+          certificate: (listing.certificates as any)?.[0] || null,
+          price_per_credit: Number(listing.price_per_credit)
+        });
       }
 
       setSellers(sellersData);
@@ -82,8 +123,12 @@ const Marketplace = () => {
     
     try {
       const contract = await getContract();
+      // Calculate the cost based on the seller's price
+      const seller = sellers.find(s => s.address === sellerAddress);
+      const costInWei = Math.floor(amount * (seller?.price_per_credit || 0.001) * 1e18);
+      
       const tx = await contract.buy(sellerAddress, amount, {
-        value: amount // 1 wei per credit as per contract
+        value: costInWei
       });
       
       toast({
@@ -197,16 +242,47 @@ const Marketplace = () => {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                <div className="grid md:grid-cols-2 gap-4 text-sm mb-4">
                   <div>
-                    <p><strong>Seller Address:</strong></p>
-                    <p className="font-mono text-xs break-all">{seller.address}</p>
+                    <p><strong>Project:</strong> {seller.project?.title || 'N/A'}</p>
+                    {seller.project?.location && (
+                      <p className="flex items-center mt-1">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {seller.project.location}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <p><strong>Total Credits:</strong> {seller.credits} tCO₂e</p>
-                    <p><strong>For Sale:</strong> {seller.forSale} tCO₂e</p>
+                    <p><strong>Credits Available:</strong> {seller.forSale} tCO₂e</p>
+                    <p><strong>Price:</strong> {seller.price_per_credit} ETH per credit</p>
                   </div>
                 </div>
+
+                {seller.certificate && (
+                  <div className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg mb-4">
+                    <div className="flex items-center">
+                      <Award className="w-4 h-4 mr-2 text-primary" />
+                      <span className="text-sm font-medium">Verified Certificate Available</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (seller.certificate?.certificate_url) {
+                          window.open(seller.certificate.certificate_url, '_blank');
+                        } else {
+                          toast({
+                            title: 'Certificate',
+                            description: 'Certificate generated and verified in system',
+                          });
+                        }
+                      }}
+                    >
+                      <Download className="w-3 h-3 mr-1" />
+                      View Certificate
+                    </Button>
+                  </div>
+                )}
 
                 <div className="flex items-center space-x-4 pt-4 border-t">
                   <Input
@@ -251,9 +327,10 @@ const Marketplace = () => {
                     )}
                   </Button>
 
-                  <p className="text-sm text-muted-foreground">
-                    Cost: {buyAmounts[seller.address] || '0'} wei
-                  </p>
+                  <div className="text-sm text-muted-foreground">
+                    <p>Cost: {((parseFloat(buyAmounts[seller.address] || '0')) * seller.price_per_credit).toFixed(6)} ETH</p>
+                    <p>({buyAmounts[seller.address] || '0'} credits × {seller.price_per_credit} ETH)</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, X, Clock, FileText, MapPin, Calendar, Wallet } from 'lucide-react';
+import { CheckCircle, X, Clock, FileText, MapPin, Calendar, Wallet, Award } from 'lucide-react';
 import { getContract, getWalletAddress, getSellerData } from '@/contracts/contract';
 import BlockchainWallet from '@/components/BlockchainWallet';
 import CertificateGenerator from '@/components/Certificate/CertificateGenerator';
@@ -35,8 +36,11 @@ const Verification = () => {
   const [loading, setLoading] = useState(true);
   const [verificationNotes, setVerificationNotes] = useState<{[key: string]: string}>({});
   const [blockchainLoading, setBlockchainLoading] = useState<{[key: string]: boolean}>({});
+  const [backupLoading, setBackupLoading] = useState<{[key: string]: boolean}>({});
   const [pendingAddresses, setPendingAddresses] = useState<string[]>([]);
   const [showCertificate, setShowCertificate] = useState<{[key: string]: boolean}>({});
+  const [creditInputs, setCreditInputs] = useState<{[key: string]: string}>({});
+  const [showBackupButton, setShowBackupButton] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     if (profile?.role === 'verifier') {
@@ -109,21 +113,107 @@ const Verification = () => {
           project_id: projectId,
           owner_id: projects.find(p => p.id === projectId)?.owner_id,
           credits_amount: amount,
+          status: 'active',
+          for_sale: amount // Make all credits available for sale by default
+        });
+
+      // Create marketplace listing
+      await supabase
+        .from('marketplace_listings')
+        .insert({
+          project_id: projectId,
+          seller_id: projects.find(p => p.id === projectId)?.owner_id,
+          credits_amount: amount,
+          price_per_credit: 0.001, // Default price per credit
           status: 'active'
         });
       
-      // Update the project status in Supabase after blockchain success
-      await handleVerification(projectId, 'verify');
+      // Refresh projects list
+      fetchPendingProjects();
+      setCreditInputs(prev => ({ ...prev, [projectId]: '' }));
       
     } catch (error: any) {
       console.error('Blockchain verification failed:', error);
+      setShowBackupButton(prev => ({ ...prev, [projectId]: true }));
       toast({
         title: 'Blockchain Error',
-        description: error.message || 'Failed to assign tokens on blockchain',
+        description: 'Transaction failed. Use "Issue Credits with Certificate" as backup.',
         variant: 'destructive'
       });
     } finally {
       setBlockchainLoading(prev => ({ ...prev, [projectId]: false }));
+    }
+  };
+
+  const handleBackupCreditsWithCertificate = async (projectId: string, amount: number) => {
+    setBackupLoading(prev => ({ ...prev, [projectId]: true }));
+    
+    try {
+      // Update project status as verified
+      await supabase
+        .from('projects')
+        .update({ 
+          status: 'verified',
+          verifier_id: profile?.id,
+          verified_at: new Date().toISOString(),
+          verification_notes: verificationNotes[projectId] || null
+        })
+        .eq('id', projectId);
+
+      // Create carbon credits record
+      await supabase
+        .from('carbon_credits')
+        .insert({
+          project_id: projectId,
+          owner_id: projects.find(p => p.id === projectId)?.owner_id,
+          credits_amount: amount,
+          status: 'active',
+          for_sale: amount
+        });
+
+      // Create marketplace listing
+      await supabase
+        .from('marketplace_listings')
+        .insert({
+          project_id: projectId,
+          seller_id: projects.find(p => p.id === projectId)?.owner_id,
+          credits_amount: amount,
+          price_per_credit: 0.001,
+          status: 'active'
+        });
+
+      // Generate certificate
+      await supabase
+        .from('certificates')
+        .insert({
+          project_id: projectId,
+          generated_by: profile?.id,
+          certificate_data: {
+            credits: amount,
+            issued_via: 'backup_system',
+            issued_at: new Date().toISOString()
+          }
+        });
+      
+      toast({
+        title: 'Success',
+        description: `${amount} credits issued with certificate. Project is now in marketplace.`,
+      });
+      
+      // Refresh projects list
+      fetchPendingProjects();
+      setCreditInputs(prev => ({ ...prev, [projectId]: '' }));
+      setShowBackupButton(prev => ({ ...prev, [projectId]: false }));
+      
+    } catch (error: any) {
+      console.error('Backup credit issuance failed:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to issue credits with certificate',
+        variant: 'destructive'
+      });
+    } finally {
+      setBackupLoading(prev => ({ ...prev, [projectId]: false }));
     }
   };
 
@@ -314,6 +404,22 @@ const Verification = () => {
                   />
                 </div>
 
+                <div className="space-y-3">
+                  <Label htmlFor={`credits-${project.id}`}>Credits to Assign</Label>
+                  <Input
+                    id={`credits-${project.id}`}
+                    type="number"
+                    placeholder={`Enter credits (Estimated: ${project.estimated_credits})`}
+                    value={creditInputs[project.id] || ''}
+                    onChange={(e) => setCreditInputs(prev => ({
+                      ...prev,
+                      [project.id]: e.target.value
+                    }))}
+                    min="1"
+                    max="10000"
+                  />
+                </div>
+
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
                   {project.status === 'pending' && (
                     <Button
@@ -328,6 +434,17 @@ const Verification = () => {
                   
                   <Button
                     onClick={async () => {
+                      const creditsToAssign = parseInt(creditInputs[project.id] || '0');
+                      
+                      if (creditsToAssign <= 0) {
+                        toast({
+                          title: 'Error', 
+                          description: 'Please enter a valid number of credits to assign',
+                          variant: 'destructive'
+                        });
+                        return;
+                      }
+
                       try {
                         // Get project owner's wallet address from profiles
                         const { data: ownerProfile } = await supabase
@@ -345,19 +462,6 @@ const Verification = () => {
                           return;
                         }
 
-                        // Prompt verifier for credit amount
-                        const creditsInput = prompt(`Enter credits to assign to this project (Estimated: ${project.estimated_credits}):`, project.estimated_credits?.toString() || '0');
-                        const creditsToAssign = creditsInput ? parseInt(creditsInput) : 0;
-                        
-                        if (creditsToAssign <= 0) {
-                          toast({
-                            title: 'Error', 
-                            description: 'Please enter a valid number of credits to assign',
-                            variant: 'destructive'
-                          });
-                          return;
-                        }
-
                         await handleBlockchainVerification(project.id, ownerProfile.wallet_address, creditsToAssign);
                       } catch (error: any) {
                         toast({
@@ -367,8 +471,8 @@ const Verification = () => {
                         });
                       }
                      }}
-                    disabled={blockchainLoading[project.id]}
-                    className="flex items-center bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                    disabled={blockchainLoading[project.id] || !creditInputs[project.id]}
+                    className="flex items-center bg-primary hover:bg-primary/90 disabled:opacity-50"
                   >
                     {blockchainLoading[project.id] ? (
                       <>
@@ -378,10 +482,35 @@ const Verification = () => {
                     ) : (
                       <>
                         <Wallet className="w-4 h-4 mr-2" />
-                        Assign Credits to NGO
+                        Assign Blockchain Credits
                       </>
                     )}
                   </Button>
+
+                  {showBackupButton[project.id] && (
+                    <Button
+                      onClick={() => {
+                        const creditsToAssign = parseInt(creditInputs[project.id] || '0');
+                        if (creditsToAssign > 0) {
+                          handleBackupCreditsWithCertificate(project.id, creditsToAssign);
+                        }
+                      }}
+                      disabled={backupLoading[project.id] || !creditInputs[project.id]}
+                      className="flex items-center bg-secondary hover:bg-secondary/90 disabled:opacity-50"
+                    >
+                      {backupLoading[project.id] ? (
+                        <>
+                          <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-black border-t-transparent" />
+                          Issuing Certificate...
+                        </>
+                      ) : (
+                        <>
+                          <Award className="w-4 h-4 mr-2" />
+                          Issue Credits with Certificate
+                        </>
+                      )}
+                    </Button>
+                  )}
                   
                   <Button
                     variant="destructive"
