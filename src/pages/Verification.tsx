@@ -132,22 +132,23 @@ const Verification = () => {
     }
 
     try {
-      const updates: any = {
-        status: action === 'verify' ? 'verified' : 'rejected',
-        verifier_id: profile.id,
-        verified_at: new Date().toISOString(),
-        verification_notes: verificationNotes[projectId] || ''
-      };
-
-      const { error } = await supabase
-        .from('projects')
-        .update(updates)
-        .eq('id', projectId);
-
-      if (error) throw error;
-
-      // If verified, create carbon credits
       if (action === 'verify') {
+        // Update project status to verified
+        const updates: any = {
+          status: 'verified',
+          verifier_id: profile.id,
+          verified_at: new Date().toISOString(),
+          verification_notes: verificationNotes[projectId] || ''
+        };
+
+        const { error } = await supabase
+          .from('projects')
+          .update(updates)
+          .eq('id', projectId);
+
+        if (error) throw error;
+
+        // Create carbon credits with static 10 credits
         const project = projects.find(p => p.id === projectId);
         if (project) {
           const { error: creditError } = await supabase
@@ -155,7 +156,7 @@ const Verification = () => {
             .insert({
               project_id: projectId,
               owner_id: project.owner_id,
-              credits_amount: project.estimated_credits,
+              credits_amount: 10, // Static 10 credits as requested
               status: 'active'
             });
 
@@ -166,15 +167,27 @@ const Verification = () => {
         
         toast({
           title: 'Success',
-          description: 'Project verified and credits assigned successfully',
+          description: 'Project verified and 10 credits issued successfully',
         });
+
+        // Refresh the list to show updated status
+        fetchPendingProjects();
+        
       } else {
+        // DELETE project from database instead of marking as rejected
+        const { error } = await supabase
+          .from('projects')
+          .delete()
+          .eq('id', projectId);
+
+        if (error) throw error;
+
         // Immediately remove rejected project from state
         setProjects(prev => prev.filter(p => p.id !== projectId));
         
         toast({
           title: 'Success',
-          description: 'Project rejected and removed from pending list',
+          description: 'Project rejected and permanently deleted from database',
         });
       }
 
@@ -184,11 +197,6 @@ const Verification = () => {
         delete newNotes[projectId];
         return newNotes;
       });
-
-      // Refresh the list to ensure consistency
-      if (action === 'verify') {
-        fetchPendingProjects();
-      }
 
     } catch (error: any) {
       toast({
